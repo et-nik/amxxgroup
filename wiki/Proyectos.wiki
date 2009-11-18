@@ -1,14 +1,14 @@
 Nuestros proyectos en curso
 
 = Plugins =
-  * [pepe No free edicts helper]
-  * Fair Play Rank
-  * Pushable Breakables
-  * Pushing Peoples
-  * Expansive Wave for Grenades
-  * Automatic Spawn Point Duplicator
-  * Block Maker Framework & Addons
+  * [edictshelper No free edicts helper]
+  * [fairplayrank Fair Play Rank]
+  * [pushables Pushable Breakables]
+  * [pushingpeople Pushing Peoples]
+  * [expansivewave Expansive Wave for Grenades]
+  * [spawnduplicator Automatic Spawn Point Duplicator]
+  * [bmfw Block Maker Framework & Addons]
 
 = Gameplay =
-  * Ultimate Hero City
-  * Ghosts
+  * [ultimatehero Ultimate Hero City]
+  * [ghostsmod Ghosts]
