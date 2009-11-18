@@ -1,8 +1,7 @@
-
 Nuestros proyectos en curso
 
 = Plugins =
-  * No free edicts helper
+  * [pepe No free edicts helper]
   * Fair Play Rank
   * Pushable Breakables
   * Pushing Peoples
