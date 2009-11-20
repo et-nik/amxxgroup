@@ -1,6 +1,7 @@
 Nuestros proyectos en curso
 
 = Plugins =
+  * [multimod Multi Mod Manager]
   * [edictshelper No free edicts helper]
   * [fairplayrank Fair Play Rank]
   * [pushables Pushable Breakables]
