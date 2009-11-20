@@ -8,25 +8,25 @@
 == Mapchooser Patched ==
   * Added only 2 lines of code to the original mapchooser
 
-Instructions
-Compile and put your plugins in plugins folder
-Create file multimod.ini in addons/amxmodx/configs folder (see format)
-Create one file for each mod that contain desired plugins for that mod (same format as plugins.ini)
-The name of the file must be in the form of TAG-plugins.ini
-Include all amxx desired plugins
-Include galileo or mapchooser_multimod (not both!)
-Include all multimod plugin
-Create a multimod folder in cstrike (somedir/cstrike/multimod)
-Put in multimod folder one file for each mod that containt desired maps for that mod
-The name of the file must be in the form of TAG-maps.ini
+= Instructions =
+  * Compile and put your plugins in plugins folder
+  * Create file multimod.ini in addons/amxmodx/configs folder (see format)
+  * Create one file for each mod that contain desired plugins for that mod (same format as plugins.ini)
+    The name of the file must be in the form of TAG-plugins.ini
+    Include all amxx desired plugins
+    Include galileo or mapchooser_multimod (not both!)
+    Include all multimod plugin
+  * Create a multimod folder in cstrike (somedir/cstrike/multimod)
+  * Put in multimod folder one file for each mod that containt desired maps for that mod
+  * The name of the file must be in the form of TAG-maps.ini
 
-How it works?
-* This plugin doesn't move, rename nor create files on the fly
-* This plugin doesn't have a map voting code at this time
-* This plugin will restart the server at first run to setup correctly
-* After first restart, default plugins.ini will not be loaded anymore
-* When there's 3 minutes left for the current map, this plugin will bring a menu for MOD voting
-* Then, mapchooser/galileo will have time to work on map voting
+ How it works?
+  * This plugin doesn't move, rename nor create files on the fly
+  * This plugin doesn't have a map voting code at this time
+  * This plugin will restart the server at first run to setup correctly
+  * After first restart, default plugins.ini will not be loaded anymore
+  * When there's 3 minutes left for the current map, this plugin will bring a menu for MOD voting
+  * Then, mapchooser/galileo will have time to work on map voting
 
 EXAMPLE
 
