@@ -30,27 +30,24 @@
 
 EXAMPLE
 
-* multimod.ini format example
-Quote:
-;mode name:mod tag:custom cvars cfg file
-[Gun Game]:[gungame]:[gungame-config.cfg]
-[Paint Ball]:[paintball]:[paintball-config.cfg]
-[Hid'N Seek]:[hns]:[hns-config.cfg]
-* With this example you will need to create:
+  * multimod.ini format example
 
-Quote:
-multimod/gungame-maps.ini
-multimod/paintball-maps.ini
-multimod/hns-maps.ini
-addons/amxmodx/configs/gungame-plugins.ini
-addons/amxmodx/configs/paintball-plugins.ini
-addons/amxmodx/configs/hns-plugins.ini
+  ';mode name:mod tag:custom cvars cfg file'
+  '[Gun Game]:[gungame]:[gungame-config.cfg]'
+  '[Paint Ball]:[paintball]:[paintball-config.cfg]'
+  '[Hid'N Seek]:[hns]:[hns-config.cfg]'
 
-*.cfg files are not needed to be created at this time
+  * With this example you will need to create:
 
-I'm sure I'm missing something but everyone can post here and will get support.
+      multimod/gungame-maps.ini
+      multimod/paintball-maps.ini
+      multimod/hns-maps.ini
+      addons/amxmodx/configs/gungame-plugins.ini
+      addons/amxmodx/configs/paintball-plugins.ini
+      addons/amxmodx/configs/hns-plugins.ini
 
-Please, test with this mapchooser_multimod (tested by me without problems).
-I need someone who can test for
-* CZ compatibility
-* Galileo compatibility
+      *.cfg files are not needed to be created at this time
+
+Pending test for
+  * CZ compatibility
+  * Galileo compatibility
