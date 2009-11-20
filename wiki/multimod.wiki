@@ -1,0 +1,56 @@
+== Multimod v2.0 Beta1 ==
+  * Removed a lot of code
+  * Removed map voting
+  * Added compatibility with galileo (not tested)
+  * Added semi-compatibility with mapchooser (requiers mapchooser patched)
+  * In this beta is not working the custom cvars file
+
+== Mapchooser Patched ==
+  * Added only 2 lines of code to the original mapchooser
+
+Instructions
+Compile and put your plugins in plugins folder
+Create file multimod.ini in addons/amxmodx/configs folder (see format)
+Create one file for each mod that contain desired plugins for that mod (same format as plugins.ini)
+The name of the file must be in the form of TAG-plugins.ini
+Include all amxx desired plugins
+Include galileo or mapchooser_multimod (not both!)
+Include all multimod plugin
+Create a multimod folder in cstrike (somedir/cstrike/multimod)
+Put in multimod folder one file for each mod that containt desired maps for that mod
+The name of the file must be in the form of TAG-maps.ini
+
+How it works?
+* This plugin doesn't move, rename nor create files on the fly
+* This plugin doesn't have a map voting code at this time
+* This plugin will restart the server at first run to setup correctly
+* After first restart, default plugins.ini will not be loaded anymore
+* When there's 3 minutes left for the current map, this plugin will bring a menu for MOD voting
+* Then, mapchooser/galileo will have time to work on map voting
+
+EXAMPLE
+
+* multimod.ini format example
+Quote:
+;mode name:mod tag:custom cvars cfg file
+[Gun Game]:[gungame]:[gungame-config.cfg]
+[Paint Ball]:[paintball]:[paintball-config.cfg]
+[Hid'N Seek]:[hns]:[hns-config.cfg]
+* With this example you will need to create:
+
+Quote:
+multimod/gungame-maps.ini
+multimod/paintball-maps.ini
+multimod/hns-maps.ini
+addons/amxmodx/configs/gungame-plugins.ini
+addons/amxmodx/configs/paintball-plugins.ini
+addons/amxmodx/configs/hns-plugins.ini
+
+*.cfg files are not needed to be created at this time
+
+I'm sure I'm missing something but everyone can post here and will get support.
+
+Please, test with this mapchooser_multimod (tested by me without problems).
+I need someone who can test for
+* CZ compatibility
+* Galileo compatibility
