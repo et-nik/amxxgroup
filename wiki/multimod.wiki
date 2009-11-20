@@ -32,10 +32,12 @@ EXAMPLE
 
   * multimod.ini format example
 
-  ';mode name:mod tag:custom cvars cfg file'
-  '[Gun Game]:[gungame]:[gungame-config.cfg]'
-  '[Paint Ball]:[paintball]:[paintball-config.cfg]'
-  '[Hid'N Seek]:[hns]:[hns-config.cfg]'
+{{{
+  ;mode name:mod tag:custom cvars cfg file
+  [Gun Game]:[gungame]:[gungame-config.cfg]
+  [Paint Ball]:[paintball]:[paintball-config.cfg]
+  [Hid'N Seek]:[hns]:[hns-config.cfg]
+}}}
 
   * With this example you will need to create:
 
