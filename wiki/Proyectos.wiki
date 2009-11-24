@@ -10,6 +10,7 @@ Nuestros proyectos en curso
   * [realcorpse Real Corpses]
   * [spawnduplicator Automatic Spawn Point Duplicator]
   * [bmfw Block Maker Framework & Addons]
+  * [multic4 Multi C4 Manager]
 
 = Gameplay =
   * [ultimatehero Ultimate Hero City]
