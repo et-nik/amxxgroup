@@ -11,6 +11,7 @@ Nuestros proyectos en curso
   * [spawnduplicator Automatic Spawn Point Duplicator]
   * [bmfw Block Maker Framework & Addons]
   * [multic4 Multi C4 Manager]
+  * [closeyoureyes Close Your Eyes]
 
 = Gameplay =
   * [ultimatehero Ultimate Hero City]
