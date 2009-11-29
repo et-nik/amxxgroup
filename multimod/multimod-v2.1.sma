@@ -1,14 +1,5 @@
 /*
 
---- multimod.ini ---
-[Gun Game]:[gungame-plugins.ini]:[gungame-config.cfg]
-[Paint Ball]:[paintball-plugins.ini]:[paintball-config.cfg]
-[Hid'N Seek]:[hns-plugins.ini]:[hns-config.cfg]
-[Death Run]:[deathrun-plugins.ini]:[deathrun-config.cfg]
-[Zombie Plague]:[zombieplague-plugins.ini]:[zombieplague-config.cfg]
-[Biohazard]:[biohazard-plugins.ini]:[biohazard-config.cfg]
---------------------
-
 TODO
 * add some commands for admins
 
