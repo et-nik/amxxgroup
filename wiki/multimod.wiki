@@ -1,55 +1,62 @@
-== Multimod v2.0 Beta1 ==
-  * Removed a lot of code
-  * Removed map voting
-  * Added compatibility with galileo (not tested)
-  * Added semi-compatibility with mapchooser (requiers mapchooser patched)
-  * In this beta is not working the custom cvars file
+Description
 
-== Mapchooser Patched ==
-  * Added only 2 lines of code to the original mapchooser
+Once this plugin is loaded for the first time, it restarts the server to correctly setup and choosing the first mod available in config file.
 
-= Instructions =
-  * Compile and put your plugins in plugins folder
-  * Create file multimod.ini in addons/amxmodx/configs folder (see format)
-  * Create one file for each mod that contain desired plugins for that mod (same format as plugins.ini)
-    The name of the file must be in the form of TAG-plugins.ini
-    Include all amxx desired plugins
-    Include galileo or mapchooser_multimod (not both!)
-    Include all multimod plugin
-  * Create a multimod folder in cstrike (somedir/cstrike/multimod)
-  * Put in multimod folder one file for each mod that containt desired maps for that mod
-  * The name of the file must be in the form of TAG-maps.ini
+When it's time to vote map, all players must vote for the nextmap plugin-set (I prefer to call as Mod).
+After that, you can vote for custom maps using mapchooser_multimod or Galileo
 
- How it works?
-  * This plugin doesn't move, rename nor create files on the fly
-  * This plugin doesn't have a map voting code at this time
-  * This plugin will restart the server at first run to setup correctly
-  * After first restart, default plugins.ini will not be loaded anymore
-  * When there's 3 minutes left for the current map, this plugin will bring a menu for MOD voting
-  * Then, mapchooser/galileo will have time to work on map voting
+So, with this you have:
 
+- Plugin-sets/Mods to play
+- Per-Mod mapcycle file
+- Per-Mod cvars file
+
+Cvars
+amx_mintime: Minimum time to play before players can make MOD voting
+amx_multimod_mode: Compatibility mode 0 [auto] ; 1 [mapchooser_multimod] ; 2 [Galileo]
+
+Commands
+amx_votemod: Admin only command to launch MOD & MAP voting
+say /votemod: Player command to launch MOD & MAP voting
+say_team /votemod: Player command to launch MOD & MAP voting
+say nextmod: Check which MOD will be running in next map
+
+Installation
+  * Compile and put it in your plugins folder
+  * Create the folder multimod in your game base directory (ej: cstrike/multimod czero/multimod)
+  * Create file multimod.ini in multimod folder (see file format in examples)
+  * Create those files for each mod in multimod folder (TAG is the one used in multimod.ini file)
+    * TAG-plugins.ini: plugin list to be loaded for the mod (you must include multimod.amxx, admin plugins, mod specific plugins, etc)
+    * TAG-maps.ini: maps list for the mod (same format as mapcycle.txt)
+cfgfilename.cfg: custom cvars and values for the mod
+    * Add multimod.amxx into addons/amxmodx/configs/plugins.ini
+
+How it works?
+* This plugin doesn't move, rename nor create files on the fly
+* This plugin doesn't have a map voting code at this time
+* This plugin will restart the server at first run to setup correctly
+* After first restart, default plugins.ini will not be loaded anymore
+* When there's 3 minutes left for the current map, this plugin will bring a menu for MOD voting
+* Then, mapchooser/galileo will have time to work on map voting
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 EXAMPLE
 
-  * multimod.ini format example
+* multimod.ini format example
+Quote:
+;mode name:mod tag:custom cvars cfg file
+[Gun Game]:[gungame]:[gungame-config.cfg]
+[Paint Ball]:[paintball]:[paintball-config.cfg]
+* With this example you will need to create:
 
-{{{
-  ;mode name:mod tag:custom cvars cfg file
-  [Gun Game]:[gungame]:[gungame-config.cfg]
-  [Paint Ball]:[paintball]:[paintball-config.cfg]
-  [Hid'N Seek]:[hns]:[hns-config.cfg]
-}}}
+Quote:
+multimod/gungame-maps.ini
+multimod/gungame-plugins.ini
+multimod/gungame-config.cfg
 
-  * With this example you will need to create:
+multimod/paintball-maps.ini
+multimod/paintball-plugins.ini
+multimod/paintball-config.cfg
 
-      multimod/gungame-maps.ini
-      multimod/paintball-maps.ini
-      multimod/hns-maps.ini
-      addons/amxmodx/configs/gungame-plugins.ini
-      addons/amxmodx/configs/paintball-plugins.ini
-      addons/amxmodx/configs/hns-plugins.ini
-
-      *.cfg files are not needed to be created at this time
-
-Pending test for
-  * CZ compatibility
-  * Galileo compatibility
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
