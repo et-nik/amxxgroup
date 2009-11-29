@@ -155,7 +155,7 @@ public plugin_cfg()
 	}
 	else
 	{
-		server_cmd("exec %s/%s", AMX_BASECONFDIR, g_fileconf)
+		server_cmd("exec %s", g_fileconf)
 	}
 }
 
