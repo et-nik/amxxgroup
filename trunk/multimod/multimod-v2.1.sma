@@ -209,12 +209,14 @@ public get_firstmap(modid)
 
 public set_multimod(modid)
 {
+	server_print("Setting multimod to %i - %s", modid, g_modnames[modid])
 	set_localinfo("amx_multimod", g_modnames[modid])
 	server_cmd("localinfo amxx_plugins ^"^"")
 	server_cmd("localinfo lastmapcycle ^"^"")
 	set_localinfo(AMX_PLUGINS, file_exists(g_fileplugins[modid]) ? g_fileplugins[modid] : AMX_DEFAULTPLUGINS)
 	set_localinfo(AMX_LASTCYCLE, file_exists(g_filemaps[modid]) ? g_filemaps[modid] : AMX_DEFAULTCYCLE)
 	set_pcvar_string(gp_mapcyclefile, file_exists(g_filemaps[modid]) ? g_filemaps[modid] : AMX_DEFAULTCYCLE)
+
 
 	switch(get_pcvar_num(gp_mode))
 	{
