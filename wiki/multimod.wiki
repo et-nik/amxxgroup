@@ -3,23 +3,26 @@ Description
 Once this plugin is loaded for the first time, it restarts the server to correctly setup and choosing the first mod available in config file.
 
 When it's time to vote map, all players must vote for the nextmap plugin-set (I prefer to call as Mod).
+
 After that, you can vote for custom maps using mapchooser_multimod or Galileo
 
 So, with this you have:
 
 - Plugin-sets/Mods to play
+
 - Per-Mod mapcycle file
+
 - Per-Mod cvars file
 
 Cvars
-amx_mintime: Minimum time to play before players can make MOD voting
-amx_multimod_mode: Compatibility mode 0 [auto] ; 1 [mapchooser_multimod] ; 2 [Galileo]
+  amx_mintime: Minimum time to play before players can make MOD voting
+  amx_multimod_mode: Compatibility mode 0 (auto) ; 1 (mapchooser_multimod) ; 2 (Galileo)
 
 Commands
-amx_votemod: Admin only command to launch MOD & MAP voting
-say /votemod: Player command to launch MOD & MAP voting
-say_team /votemod: Player command to launch MOD & MAP voting
-say nextmod: Check which MOD will be running in next map
+  amx_votemod: Admin only command to launch MOD & MAP voting
+  say /votemod: Player command to launch MOD & MAP voting
+  say_team /votemod: Player command to launch MOD & MAP voting
+  say nextmod: Check which MOD will be running in next map
 
 Installation
   * Compile and put it in your plugins folder
@@ -43,20 +46,18 @@ How it works?
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 EXAMPLE
 
-* multimod.ini format example
-Quote:
-;mode name:mod tag:custom cvars cfg file
-[Gun Game]:[gungame]:[gungame-config.cfg]
-[Paint Ball]:[paintball]:[paintball-config.cfg]
-* With this example you will need to create:
+  * multimod.ini format example
+    ;mode name:mod tag:custom cvars cfg file
+    [Gun Game]:[gungame]:[gungame-config.cfg]
+    [Paint Ball]:[paintball]:[paintball-config.cfg]
+  * With this example you will need to create:
 
-Quote:
-multimod/gungame-maps.ini
-multimod/gungame-plugins.ini
-multimod/gungame-config.cfg
-
-multimod/paintball-maps.ini
-multimod/paintball-plugins.ini
-multimod/paintball-config.cfg
+    multimod/gungame-maps.ini
+    multimod/gungame-plugins.ini
+    multimod/gungame-config.cfg
+    
+    multimod/paintball-maps.ini
+    multimod/paintball-plugins.ini
+    multimod/paintball-config.cfg
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
