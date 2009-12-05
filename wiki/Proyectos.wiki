@@ -12,6 +12,7 @@ Nuestros proyectos en curso
   * [bmfw Block Maker Framework & Addons]
   * [multic4 Multi C4 Manager]
   * [closeyoureyes Close Your Eyes]
+  * [amxxaccouns AMXX User Accounts]
 
 = Gameplay =
   * [ultimatehero Ultimate Hero City]
