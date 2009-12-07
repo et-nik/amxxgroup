@@ -2,20 +2,20 @@ Nuestros proyectos en curso
 
 = Plugins =
   * [multimod Multi Mod Manager]
-  * [edictshelper No Edicts Helper]
   * [fairplayrank Fair Play Rank]
   * [pushables Pushable Breakables]
   * [pushingpeople Pushing Peoples]
   * [expansivewave Expansive Wave for Grenades]
   * [realcorpse Real Corpses]
-  * [spawnduplicator Automatic Spawn Point Duplicator]
   * [bmfw Block Maker Framework & Addons]
   * [multic4 Multi C4 Manager]
   * [closeyoureyes Close Your Eyes]
-  * [amxxaccouns AMXX User Accounts]
 
 = Utilities =
   * [svcstocks TEMPENTITY Stocks]
+  * [edictshelper No Edicts Helper]
+  * [spawnduplicator Automatic Spawn Point Duplicator]
+  * [amxxaccouns AMXX User Accounts]
 
 = Gameplay =
   * [ultimatehero Ultimate Hero City]
