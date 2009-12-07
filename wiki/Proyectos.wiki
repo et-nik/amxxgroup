@@ -14,6 +14,9 @@ Nuestros proyectos en curso
   * [closeyoureyes Close Your Eyes]
   * [amxxaccouns AMXX User Accounts]
 
+= Utilities =
+  * [svcstocks TEMPENTITY Stocks]
+
 = Gameplay =
   * [ultimatehero Ultimate Hero City]
   * [ghostsmod Ghosts]
