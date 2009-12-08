@@ -16,6 +16,7 @@ Nuestros proyectos en curso
   * [edictshelper No Edicts Helper]
   * [spawnduplicator Automatic Spawn Point Duplicator]
   * [amxxaccouns AMXX User Accounts]
+  * [multifastdl Multi FastDL]
 
 = Gameplay =
   * [ultimatehero Ultimate Hero City]
