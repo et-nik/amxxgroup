@@ -18,3 +18,4 @@ It works very simple
 = Deletion Rules =
   * Every entity without owner
   * Entities owned by disconnected players
+  
