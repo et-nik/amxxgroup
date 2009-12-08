@@ -28,8 +28,8 @@ public plugin_init()
 
 		fgets(f, line, charsmax(line))
 		trim(line)
-		strtolower(line)
 		strcat(tmp, line, charsmax(tmp))
+		strtolower(tmp)
 
 		if(!equal(tmp, "http://")) continue
 
