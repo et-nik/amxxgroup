@@ -19,3 +19,7 @@
 There's a native function to register your block, then there's some standard calls handled by core plugin you may want to use.
 
 *_reg_block* native
+
+{{{
+ native _reg_block(const name[], const ver[], const model[], const touch, const Float:cdown, const Float:size[3], const Float:sizesmall[3], const Float:sizelarge[3])
+}}}
