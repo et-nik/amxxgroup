@@ -1,3 +1,21 @@
 == Block Maker FrameWork ==
   * What is this?
   It's a multi-plugin framework to allow developers build their own type of blocks for maps.
+
+  * Why you made this?
+  Because I see too many people asking for support to modify some other plugins for blocks and I think it's very annoying to modify.
+
+  * What's change with this plugin framework?
+  You can make your own block without any needs to modify the core plugin.
+
+  * I can do anything with my block?
+  Yes, you can do anything but I suggest try to limit to function calls available in this framework to avoid high cpu usage in your own block.
+
+  * Can I ask you to make some blocks for me?
+  No. Read the api, it's very simple. Anything else is up to you.
+
+== API Details ==
+
+There's a native function to register your block, then there's some standard calls handled by core plugin you may want to use.
+
+*_reg_block* native
