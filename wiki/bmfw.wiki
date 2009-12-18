@@ -18,6 +18,8 @@
 
 There's a native function to register your block, then there's some standard calls handled by core plugin you may want to use.
 
+You must know that every block entity is func_breakable type.
+
 *_reg_block* native
 
 {{{
@@ -26,3 +28,12 @@ There's a native function to register your block, then there's some standard cal
 
   This is used to register your block within the core plugin.
   You must pass all arguments.
+
+*block_Think* call
+  This is the think of the block. It's only be called if the block entity has to think.
+
+*block_Spawn* call
+  This is called after the block was created. You can handle here any change over the entity you may need (example: pev_health).
+
+*block_Touch* call
+  This is called on every touch from a player to the block.
