@@ -9,11 +9,8 @@
 #define	PLUGIN_VERSION	"0.1"
 #define	PLUGIN_CVAR	"bmfw"
 
-#define BM_BASEFILE	"models/blockmaker/bm_block_"
-#define BM_CLASSNAME	"func_bmfw"
-
 #define MAX_PLAYERS	32
-#define MAX_BLOCKS	32
+#define MAX_BLOCKS	64
 
 #define _del_prop(%1,%2)		g_Player[%2] &= ~(1<<(%1 - 1))
 #define _set_prop(%1,%2)		g_Player[%2] |= ~(1<<(%1 - 1))
@@ -38,10 +35,7 @@ new g_Blocks[MAX_BLOCKS][Blocks]
 new g_Count = -1
 new g_MaxClients
 
-//new Float:g_HullMins[3] = {-16.0, -16.0, -36.0}
-//new Float:g_HullMaxs[3] = {16.0, 16.0, 36.0}
-//new Float:g_HullHeadMins[3] = {-16.0, -16.0, -18.0}
-//new Float:g_HullHeadMaxs[3] = {16.0, 16.0, 18.0}
+new Float:g_PlayerCooldown[MAX_PLAYERS][MAX_BLOCKS]
 
 public plugin_init()
 {
@@ -63,9 +57,6 @@ public plugin_init()
 public plugin_natives()
 {
 	register_library(PLUGIN_CVAR)
-	register_native("_set_prop", "_native_set_prop")
-	register_native("_get_prop", "_native_get_prop")
-	register_native("_del_prop", "_native_del_prop")
 	register_native("_reg_block", "_native_reg_block")
 
 	return PLUGIN_CONTINUE
@@ -85,23 +76,28 @@ public client_putinserver(id)
 //// NATIVES
 ////////////////////////////////////////////////////////////////////
 
-public _native_set_prop(id, Props:prop) _set_prop(id, prop)
-
-public _native_del_prop(id, Props:prop) _del_prop(id, prop)
-
-public _native_get_prop(id, Props:prop) return _get_prop(id, prop)
-
 public _native_reg_block(plugin, count)
 {
-	new name[32]
-	new model[128]
+	new name[32], model[128]
+	new cooldown
+	new Float:size[3], Float:sizesmall[3], Float:sizelarge[3]
+
 	get_string(1, name, charsmax(name))
 	get_string(2, model, charsmax(model))
+	cooldown = get_param(3)
+	get_array_f(4, size, charsmax(size))
+	get_array_f(5, sizesmall, charsmax(sizesmall))
+	get_array_f(6, sizelarge, charsmax(sizelarge))
+
 	g_Count++
 	server_print("Block registered %i:%s", g_Count, name)
-	g_Blocks[g_Count][bPlugin] = plugin
 	copy(g_Blocks[g_Count][bName], charsmax(g_Blocks), name)
 	copy(g_Blocks[g_Count][bModel], charsmax(g_Blocks), model)
+	g_Blocks[g_Count][bPlugin] = plugin
+	g_Blocks[g_Count][bCooldown] = cooldown
+	bm_vector_copy(g_Blocks[g_Count][bSize], size)
+	bm_vector_copy(g_Blocks[g_Count][bSizeSmall], sizesmall)
+	bm_vector_copy(g_Blocks[g_Count][bSizeLarge], sizelarge)
 	for(new i=0; i< sizeof g_Functions; i++)
 	{
 		new idx = get_func_id(g_Functions[i], plugin)
@@ -171,7 +167,7 @@ public bm_add(id)
 	new model[128]
 	formatex(model, charsmax(model), "%s%s.mdl", BM_BASEFILE, g_Blocks[bType][bModel])
 
-	new ent = create_entity("func_breakable")
+	new ent = create_entity(BM_BASECLASS)
 	if (is_valid_ent(ent))
 	{
 		entity_set_string(ent, EV_SZ_classname, BM_CLASSNAME)
@@ -180,9 +176,9 @@ public bm_add(id)
 		entity_set_origin(ent, vorigin)
 		entity_set_int(ent, EV_INT_solid, SOLID_BBOX)
 		entity_set_int(ent, EV_INT_movetype, MOVETYPE_FLY)
-//		entity_set_vector(ent, EV_VEC_angles, vAngles)
 		entity_set_int(ent, EV_INT_body, bType)
-		// snaping
+		// snaping code here
+
 		if(g_Blocks[bType][bHandlers][Handlers:hSpawn] > 0)
 		{
 			if(callfunc_begin_i(g_Blocks[bType][bHandlers][Handlers:hSpawn], g_Blocks[bType][bPlugin]) > 0)
@@ -250,7 +246,7 @@ public _bm_is_on_block(id)
 	pOrigin[2] = pOrigin[2] - ((pSize[2] - 36.0) - (pMaxs[2] - 36.0))
 	vBottom[2] = pOrigin[2] - 1.0
 	bm_vector_copy(vHead, pOrigin)
-	vHead[2] += pSize[2]
+	vHead[2] += pSize[2] + 1.0
 
 	for (new i = 0; i < 4; ++i)
 	{
@@ -285,6 +281,17 @@ public pfn_touch(touched, toucher)
 	}
 
 	new bType = entity_get_int(touched, EV_INT_body)
+	if(g_Blocks[bType][bCooldown] >= 0)
+	{
+		new Float:time = halflife_time()
+		new cooldown = g_Blocks[bType][bCooldown]
+		if(time < (g_PlayerCooldown[toucher][bType] + cooldown))
+		{
+			return PLUGIN_CONTINUE
+		}
+		g_PlayerCooldown[toucher][bType] = time
+	}
+
 	g_PlayerBlock[toucher] = bType
 	if(g_Blocks[bType][bHandlers][Handlers:hTouch] > 0)
 	{

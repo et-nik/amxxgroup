@@ -15,7 +15,7 @@ public plugin_init()
 {
 	register_plugin(PLUGIN_NAME, PLUGIN_VERSION, PLUGIN_AUTHOR)
 	register_cvar(PLUGIN_CVAR, PLUGIN_VERSION, FCVAR_SERVER|FCVAR_SPONLY)
-	_reg_block(g_Name, g_Model, g_Size)
+	_reg_block(g_Name, g_Model, -1, g_Size, g_Size, g_Size)
 }
 
 public plugin_precache()

@@ -19,7 +19,7 @@ public plugin_init()
 {
 	register_plugin(PLUGIN_NAME, PLUGIN_VERSION, PLUGIN_AUTHOR)
 	register_cvar(PLUGIN_CVAR, PLUGIN_VERSION, FCVAR_SERVER|FCVAR_SPONLY)
-	_reg_block(NameBlock, ModelBlock, SizeBlock)
+	_reg_block(NameBlock, ModelBlock, 3, SizeBlock, SizeBlock, SizeBlock)
 	Flash = get_user_msgid("ScreenFade")
 	
 }

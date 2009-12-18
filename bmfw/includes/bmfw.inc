@@ -6,23 +6,17 @@
 #pragma reqlib bmfw
 
 #define BM_BASEFILE	"models/blockmaker/bm_block_"
+#define BM_BASECLASS	"func_breakable"
+#define BM_CLASSNAME	"func_bmfw"
 
-enum { point_hull, human_hull, large_hull, head_hull }
-enum Props { eConnected, eAlive, eTt, eCt, eVisible, eSemiclip }
+
+enum { touch_all, touch_both, touch_down, touch_up }
+enum Props { eConnected, eAlive }
 enum Handlers { hSpawn, hTouch, hAddToFullPack, hPlayerPreThink, hPlayerPostThink, hUpdateClientData, hThink }
-enum Blocks { bPlugin, bName[32], bHandlers[Handlers], bModel[128], Float:bSize[3], Float:bSizeSmall[3], Float:bSizeLarge[3] }
-
-// Sets player property
-native _set_prop(id, Props:prop)
-
-// Deletes player property
-native _del_prop(id, Props:prop)
-
-// Gets player property
-native _get_prop(id, Props:prop)
+enum Blocks { bPlugin, bName[32], bModel[128], bCooldown, Float:bSize[3], Float:bSizeSmall[3], Float:bSizeLarge[3], bHandlers[Handlers] }
 
 // Register block in framework
-native _reg_block(const name[], const model[], const Float:size[3])
+native _reg_block(const name[], const model[], const cooldown, const Float:size[3], const Float:sizesmall[3], const Float:sizelarge[3])
 
 // Precache model in default directory
 stock bm_precache_model(const fmt[], any:...)
