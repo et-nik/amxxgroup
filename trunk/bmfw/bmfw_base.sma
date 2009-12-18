@@ -79,15 +79,17 @@ public client_putinserver(id)
 public _native_reg_block(plugin, count)
 {
 	new name[32], model[128]
+	new touchtype
 	new cooldown
 	new Float:size[3], Float:sizesmall[3], Float:sizelarge[3]
 
 	get_string(1, name, charsmax(name))
 	get_string(2, model, charsmax(model))
-	cooldown = get_param(3)
-	get_array_f(4, size, charsmax(size))
-	get_array_f(5, sizesmall, charsmax(sizesmall))
-	get_array_f(6, sizelarge, charsmax(sizelarge))
+	touchtype = get_param(3)
+	cooldown = get_param(4)
+	get_array_f(5, size, charsmax(size))
+	get_array_f(6, sizesmall, charsmax(sizesmall))
+	get_array_f(7, sizelarge, charsmax(sizelarge))
 
 	g_Count++
 	server_print("Block registered %i:%s", g_Count, name)
@@ -95,6 +97,7 @@ public _native_reg_block(plugin, count)
 	copy(g_Blocks[g_Count][bModel], charsmax(g_Blocks), model)
 	g_Blocks[g_Count][bPlugin] = plugin
 	g_Blocks[g_Count][bCooldown] = cooldown
+	g_Blocks[g_Count][bTouch] = touchtype
 	bm_vector_copy(g_Blocks[g_Count][bSize], size)
 	bm_vector_copy(g_Blocks[g_Count][bSizeSmall], sizesmall)
 	bm_vector_copy(g_Blocks[g_Count][bSizeLarge], sizelarge)
@@ -219,7 +222,7 @@ public bm_grab_release(id)
 //// BMFW CORE
 ////////////////////////////////////////////////////////////////////
 
-public _bm_is_block(ent)
+stock _bm_is_block(ent)
 {
 	if(is_valid_ent(ent))
 	{
@@ -229,6 +232,12 @@ public _bm_is_block(ent)
 			return true
 	}
 	return false
+}
+
+stock _bm_is_touched(ent, touchtype)
+{
+	new bType = entity_get_int(ent, EV_INT_body)
+	return (g_Blocks[bType][bTouch] & touchtype)
 }
 
 public _bm_is_on_block(id)
@@ -254,11 +263,11 @@ public _bm_is_on_block(id)
 		vBottom[1] = pOrigin[1] - g_Corners[i]
 
 		ent = trace_line(id, pOrigin, vBottom, vReturn)
-		if(_bm_is_block(ent))
+		if(_bm_is_block(ent) && _bm_is_touched(ent, touch_foot || touch_all || touch_both))
 			return ent
 
 		ent = trace_line(id, pOrigin, vHead, vReturn)
-		if(_bm_is_block(ent))
+		if(_bm_is_block(ent) && _bm_is_touched(ent, touch_head || touch_all || touch_both))
 			return ent
 	}
 
