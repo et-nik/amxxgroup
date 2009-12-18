@@ -1,4 +1,4 @@
-=BlockMaker FrameWork=
+=BlockMakerFrameWork=
 
   * What is this?
   It's a multi-plugin framework to allow developers build their own type of blocks for maps.
