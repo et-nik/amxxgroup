@@ -85,7 +85,7 @@ public _native_reg_block(plugin, count)
 	new name[32], cvarname[32], version[32], model[128]
 	new touchtype
 	new Float:cooldown
-	new Float:size[3], Float:sizesmall[3], Float:sizelarge[3]
+	new Float:size[4], Float:sizesmall[4], Float:sizelarge[4]
 
 	get_string(1, name, charsmax(name))
 	get_string(2, version, charsmax(version))
@@ -173,8 +173,10 @@ public bm_add(id)
 		return PLUGIN_HANDLED
 	}
 
-	static szTemp[32]
+	static szTemp[32], size[2]
 	read_argv(1, szTemp, charsmax(szTemp))
+	read_argv(2, size, charsmax(size))
+
 	new bType = str_to_num(szTemp)
 
 	if(bType > g_Count)
@@ -187,8 +189,32 @@ public bm_add(id)
 	IVecFVec(origin, vorigin)
 	vorigin[2] += 15.0
 
-	new model[128]
-	formatex(model, charsmax(model), "%s%s.mdl", BM_BASEFILE, g_Blocks[bType][bModel])
+	new model[128], modelsize[16]
+	new Float:vMins[3], Float:vMaxs[3]
+	switch(size[0])
+	{
+		case 'l':
+		{
+			copy(modelsize, charsmax(modelsize), BM_MODELLARGE)
+			bm_vector_copy(vMins, g_Blocks[bType][bSizeLarge])
+			bm_vector_copy(vMaxs, g_Blocks[bType][bSizeLarge])
+		}
+		case 's':
+		{
+			copy(modelsize, charsmax(modelsize), BM_MODELSMALL)
+			bm_vector_copy(vMins, g_Blocks[bType][bSizeSmall])
+			bm_vector_copy(vMaxs, g_Blocks[bType][bSizeSmall])
+		}
+		default:
+		{
+			bm_vector_copy(vMins, g_Blocks[bType][bSize])
+			bm_vector_copy(vMaxs, g_Blocks[bType][bSize])
+		}
+	}
+	bm_vector_mul(vMins, -0.5)
+	bm_vector_mul(vMaxs, 0.5)
+
+	formatex(model, charsmax(model), "%s%s%s.mdl", BM_BASEFILE, g_Blocks[bType][bModel], modelsize)
 
 	new ent = create_entity(BM_BASECLASS)
 	if(is_valid_ent(ent))
@@ -196,7 +222,7 @@ public bm_add(id)
 		g_BlocksCount++
 		entity_set_string(ent, EV_SZ_classname, BM_CLASSNAME)
 		entity_set_model(ent, model)
-		entity_set_size(ent, Float:{-32.0, -32.0, -4.0}, Float:{32.0, 32.0, 4.0})
+		entity_set_size(ent, vMins, vMaxs)
 		entity_set_origin(ent, vorigin)
 		entity_set_int(ent, EV_INT_solid, SOLID_BBOX)
 		entity_set_int(ent, EV_INT_movetype, MOVETYPE_FLY)
