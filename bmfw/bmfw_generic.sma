@@ -16,7 +16,7 @@ new const Float:g_SizeLarge[4] = { 128.0, 128.0, 8.0 }
 public plugin_init()
 {
 	register_plugin(PLUGIN_NAME, PLUGIN_VERSION, PLUGIN_AUTHOR)
-	_reg_block(g_Name, PLUGIN_VERSION, g_Model, TOUCH_FOOT, BM_COOLDOWN, g_Size, g_SizeSmall, g_SizeLarge)
+	_reg_block(g_Name, PLUGIN_VERSION, g_Model, TOUCH_NONE, BM_COOLDOWN, g_Size, g_SizeSmall, g_SizeLarge)
 	
 }
 

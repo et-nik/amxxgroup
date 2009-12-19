@@ -58,3 +58,12 @@ stock bm_vector_copy(Float:vecDst[], const Float:vecSrc[])
 	vecDst[1] = vecSrc[1];
 	vecDst[2] = vecSrc[2];
 }
+
+stock bm_vector_compare(const Float:vecA[], const Float:vecB[])
+{
+	if((vecA[0] == vecB[0]) && (vecA[1] == vecB[1]) && (vecA[2] == vecB[2]))
+		return true
+
+	return false
+}
+
