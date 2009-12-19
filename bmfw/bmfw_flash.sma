@@ -3,13 +3,12 @@
 #define	PLUGIN_NAME	"BM Flash"
 #define	PLUGIN_AUTHOR	"Asd'"
 #define	PLUGIN_VERSION	"0.1"
-#define	PLUGIN_CVAR	"bmfw_flash"
 
 #define	FADE_IN		0x0000
-#define	BM_COOLDOWN	10
+#define	BM_COOLDOWN	10.0
 
-new NameBlock[] = "Flash"
-new ModelBlock[] = "random"
+new const NameBlock[] = "Flash"
+new const ModelBlock[] = "random"
 new Float:SizeBlock[3] = { 10.0, 10.0, 10.0 }
 
 new Flash
@@ -17,8 +16,7 @@ new Flash
 public plugin_init()
 {
 	register_plugin(PLUGIN_NAME, PLUGIN_VERSION, PLUGIN_AUTHOR)
-	register_cvar(PLUGIN_CVAR, PLUGIN_VERSION, FCVAR_SERVER|FCVAR_SPONLY)
-	_reg_block(NameBlock, ModelBlock, touch_foot, BM_COOLDOWN, SizeBlock, SizeBlock, SizeBlock)
+	_reg_block(NameBlock, PLUGIN_VERSION, ModelBlock, TOUCH_FOOT, BM_COOLDOWN, SizeBlock, SizeBlock, SizeBlock)
 	Flash = get_user_msgid("ScreenFade")
 	
 }

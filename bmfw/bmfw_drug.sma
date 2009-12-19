@@ -3,11 +3,10 @@
 #define	PLUGIN_NAME	"BM Bunny Hop"
 #define	PLUGIN_AUTHOR	"JoRoPiTo"
 #define	PLUGIN_VERSION	"0.1"
-#define	PLUGIN_CVAR	"bmfw_bhop"
 
 #define BM_FOV		180
 #define BM_DEFAULTFOV	90
-#define BM_COOLDOWN	30
+#define BM_COOLDOWN	30.0
 
 new const g_Name[] = "Drug"
 new const g_Model[] = "slap"
@@ -18,8 +17,7 @@ new g_SetFOV
 public plugin_init()
 {
 	register_plugin(PLUGIN_NAME, PLUGIN_VERSION, PLUGIN_AUTHOR)
-	register_cvar(PLUGIN_CVAR, PLUGIN_VERSION, FCVAR_SERVER|FCVAR_SPONLY)
-	_reg_block(g_Name, g_Model, touch_foot, BM_COOLDOWN, g_Size, g_Size, g_Size)
+	_reg_block(g_Name, PLUGIN_VERSION, g_Model, TOUCH_FOOT, BM_COOLDOWN, g_Size, g_Size, g_Size)
 	g_SetFOV = get_user_msgid("SetFOV")
 
 }

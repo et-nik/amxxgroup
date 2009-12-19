@@ -3,10 +3,11 @@
 #define	PLUGIN_NAME	"BM Bunny Hop"
 #define	PLUGIN_AUTHOR	"JoRoPiTo"
 #define	PLUGIN_VERSION	"0.1"
-#define	PLUGIN_CVAR	"bmfw_bhop"
 
 #define BHOP_VELOCITY	250.0
+#define BM_COOLDOWN	-1.0
 
+new g_BlockId = -1
 new const g_Name[] = "Auto Bunny-Hop"
 new const g_Model[] = "autobhop"
 new const Float:g_Size[3] = { 10.0, 10.0, 10.0 }
@@ -14,8 +15,7 @@ new const Float:g_Size[3] = { 10.0, 10.0, 10.0 }
 public plugin_init()
 {
 	register_plugin(PLUGIN_NAME, PLUGIN_VERSION, PLUGIN_AUTHOR)
-	register_cvar(PLUGIN_CVAR, PLUGIN_VERSION, FCVAR_SERVER|FCVAR_SPONLY)
-	_reg_block(g_Name, g_Model, touch_foot, -1, g_Size, g_Size, g_Size)
+	g_BlockId = _reg_block(g_Name, PLUGIN_VERSION, g_Model, TOUCH_FOOT, BM_COOLDOWN, g_Size, g_Size, g_Size)
 }
 
 public plugin_precache()
@@ -25,13 +25,19 @@ public plugin_precache()
 	bm_precache_model("%s%s_small.mdl", BM_BASEFILE, g_Model)
 }
 
+public block_Touch(touched, toucher)
+{
+	_set_handler(toucher, g_BlockId, g_BlockId, hPlayerPreThink)
+	return PLUGIN_CONTINUE
+}
+
 public block_PlayerPreThink(id)
 {
 	new Float:velocity[3]
 	entity_get_vector(id, EV_VEC_velocity, velocity)
 	velocity[2] += (velocity[2] >= 0.0) ? BHOP_VELOCITY : (BHOP_VELOCITY - velocity[2])
 	entity_set_vector(id, EV_VEC_velocity, velocity)
-	dllfunc(DLLFunc_PlayerPreThink, id)
+	_set_handler(id, g_BlockId, -1, hPlayerPreThink)
 	return PLUGIN_CONTINUE
 }
 
