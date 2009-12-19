@@ -9,7 +9,7 @@
 #define MAX_BLOCKS	64
 #define MAX_ENTBLOCKS	400
 
-new const g_Corners[] = {-16, 16, 16, -16}
+new const g_Corners[][] = { {-16, 16, 16, -16, -8, 8, 8, -8, 0}, {-16, -16, 16, 16, -8, -8, 8, 8, 0} }
 new const g_Functions[][] =
 {
 	"block_Spawn",
@@ -30,6 +30,8 @@ new g_MaxEntities
 new g_MaxClients
 
 new Float:g_PlayerCooldown[MAX_PLAYERS+1][MAX_BLOCKS]
+new Float:g_PlayerLastOrigin[MAX_PLAYERS+1][3]
+new g_PlayerLastBlock[MAX_PLAYERS+1]
 
 public plugin_init()
 {
@@ -61,9 +63,12 @@ public plugin_natives()
 
 public client_putinserver(id)
 {
+	g_PlayerLastOrigin[id] = Float:{ 99999.9, 99999.9, 99999.9 }
+	g_PlayerLastBlock[id] = -1
 	for(new j = 0; j <= g_Count; j++)
 		for(new i = 0; i < _:Handlers; i++)
 			g_PlayerHandler[id][j][Handlers:i] = -1
+
 }
 
 ////////////////////////////////////////////////////////////////////
@@ -184,11 +189,6 @@ public bm_add(id)
 
 	server_print("Added block %i (%s) by player %i", bType, g_Blocks[bType][bModel], id)
 
-	new origin[3], Float:vorigin[3]
-	get_user_origin(id, origin, 3)
-	IVecFVec(origin, vorigin)
-	vorigin[2] += 15.0
-
 	new model[128], modelsize[16]
 	new Float:vMins[3], Float:vMaxs[3]
 	switch(size[0])
@@ -215,6 +215,11 @@ public bm_add(id)
 	bm_vector_mul(vMaxs, 0.5)
 
 	formatex(model, charsmax(model), "%s%s%s.mdl", BM_BASEFILE, g_Blocks[bType][bModel], modelsize)
+
+	new origin[3], Float:vorigin[3]
+	get_user_origin(id, origin, 3)
+	IVecFVec(origin, vorigin)
+	vorigin[2] -= vMins[2]
 
 	new ent = create_entity(BM_BASECLASS)
 	if(is_valid_ent(ent))
@@ -306,15 +311,22 @@ public _bm_is_on_block(id)
 	bm_vector_copy(vHead, pOrigin)
 	vHead[2] += pSize[2] + 1.0
 
-	for (new i = 0; i < 4; ++i)
+	// To avoid cpu usage we can cache last touched block for same origin
+	if(bm_vector_compare(g_PlayerLastOrigin[id], pOrigin))
+		return g_PlayerLastBlock[id]
+
+	bm_vector_copy(g_PlayerLastOrigin[id], pOrigin)
+	for (new i = 0; i < 9; ++i)
 	{
-		vBottom[0] = pOrigin[0] + g_Corners[i]
-		vBottom[1] = pOrigin[1] - g_Corners[i]
+		vBottom[0] = pOrigin[0] + g_Corners[0][i]
+		vBottom[1] = pOrigin[1] - g_Corners[1][i]
 
 		ent = trace_line(id, pOrigin, vBottom, vReturn)
 		if(_bm_is_block(ent) && _bm_is_touched(ent, TOUCH_FOOT | TOUCH_ALL | TOUCH_BOTH))
 			return ent
 
+		vHead[0] = pOrigin[0] + g_Corners[0][i]
+		vHead[1] = pOrigin[1] - g_Corners[1][i]
 		ent = trace_line(id, pOrigin, vHead, vReturn)
 		if(_bm_is_block(ent) && _bm_is_touched(ent, TOUCH_HEAD | TOUCH_ALL | TOUCH_BOTH))
 			return ent
@@ -347,6 +359,9 @@ public pfn_touch(touched, toucher)
 	{
 		return PLUGIN_CONTINUE
 	}
+
+	// To avoid cpu usage we can cache last touched block for same origin
+	g_PlayerLastBlock[toucher] = touched
 
 	if(g_Blocks[bType][bCooldown] >= 0)
 	{
