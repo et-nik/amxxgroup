@@ -20,7 +20,7 @@ public plugin_init()
 	register_plugin(PLUGIN_NAME, PLUGIN_VERSION, PLUGIN_AUTHOR)
 	_reg_block(g_Name, PLUGIN_VERSION, g_Model, TOUCH_FOOT, BM_COOLDOWN, g_Size, g_SizeSmall, g_SizeLarge)
 
-	register_event("TextMsg", "round_Start", "a", "2&#Game_C", "2&#Game_w")
+//	register_event("TextMsg", "round_Start", "a", "2&#Game_C", "2&#Game_w")
 	register_logevent("round_Start", 2, "1=Round_Start")
 }
 
