@@ -12,14 +12,17 @@
 new g_BlockId
 new const g_Name[] = "Boots Of Speed"
 new const g_Model[] = "bootsofspeed"
-new Float:SizeBlock[3] = { 10.0, 10.0, 10.0 }
+
+new const Float:g_Size[4] = { 64.0, 64.0, 8.0 }
+new const Float:g_SizeSmall[4] = { 16.0, 16.0, 8.0 }
+new const Float:g_SizeLarge[4] = { 128.0, 128.0, 8.0 }
 
 new Float:g_PlayerSpeed[32]
 
 public plugin_init()
 {
 	register_plugin(PLUGIN_NAME, PLUGIN_VERSION, PLUGIN_AUTHOR)
-	g_BlockId = _reg_block(g_Name, PLUGIN_VERSION, g_Model, TOUCH_FOOT, BM_COOLDOWN, SizeBlock, SizeBlock, SizeBlock)
+	g_BlockId = _reg_block(g_Name, PLUGIN_VERSION, g_Model, TOUCH_FOOT, BM_COOLDOWN, g_Size, g_SizeSmall, g_SizeLarge)
 }
 
 public plugin_precache()

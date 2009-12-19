@@ -8,6 +8,9 @@
 #define BM_BASECLASS	"func_breakable"
 #define BM_CLASSNAME	"func_bmfw"
 
+#define BM_MODELLARGE	"_large"
+#define BM_MODELSMALL	"_small"
+
 #define TOUCH_NONE	1<<0
 #define TOUCH_ALL	1<<1
 #define TOUCH_BOTH	1<<2
@@ -22,7 +25,7 @@ enum Blocks { bPlugin, bName[32], bModel[128], bCooldown, bTouch, Float:bSize[3]
 native _set_handler(const id, const blockid, const value, const Handlers:handler)
 
 // Register block in framework
-native _reg_block(const name[], const ver[], const model[], const touch, const Float:cdown, const Float:size[3], const Float:sizesmall[3], const Float:sizelarge[3])
+native _reg_block(const name[], const ver[], const model[], const touch, const Float:cdown, const Float:size[], const Float:sizesmall[], const Float:sizelarge[])
 
 // Precache model in default directory
 stock bm_precache_model(const fmt[], any:...)
