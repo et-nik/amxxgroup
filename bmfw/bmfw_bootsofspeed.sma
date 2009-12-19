@@ -5,7 +5,7 @@
 #define	PLUGIN_AUTHOR	"JoRoPiTo"
 #define	PLUGIN_VERSION	"0.1"
 
-#define	BM_COOLDOWN	-1.0
+#define	BM_COOLDOWN	30.0
 #define	BM_SPEEDTIME	15.0
 #define	BM_MAXSPEED	1500.0
 
@@ -17,7 +17,7 @@ new const Float:g_Size[4] = { 64.0, 64.0, 8.0 }
 new const Float:g_SizeSmall[4] = { 16.0, 16.0, 8.0 }
 new const Float:g_SizeLarge[4] = { 128.0, 128.0, 8.0 }
 
-new Float:g_PlayerSpeed[32]
+new g_PlayerSpeed[32]
 
 public plugin_init()
 {
@@ -34,17 +34,23 @@ public plugin_precache()
 
 public block_Touch(touched, toucher)
 {
-	set_user_maxspeed(toucher, BM_MAXSPEED)
-	g_PlayerSpeed[toucher] = BM_MAXSPEED
-	_set_handler(toucher, g_BlockId, g_BlockId, hPlayerPreThink)
-	set_task(BM_SPEEDTIME, "player_Unspeed", toucher)
+	if(!g_PlayerSpeed[toucher])
+	{
+		set_user_maxspeed(toucher, BM_MAXSPEED)
+		g_PlayerSpeed[toucher] = 1
+		_set_handler(toucher, g_BlockId, g_BlockId, hPlayerPreThink)
+		set_task(BM_SPEEDTIME, "player_Unspeed", toucher)
+	}
 	return PLUGIN_CONTINUE
 }
 
 public block_PlayerPreThink(id)
 {
-	entity_set_float(id, EV_FL_fuser2, 0.0)
-	set_user_maxspeed(id, BM_MAXSPEED)
+	if(g_PlayerSpeed[id])
+	{
+		entity_set_float(id, EV_FL_fuser2, 0.0)
+		set_user_maxspeed(id, BM_MAXSPEED)
+	}
 	return PLUGIN_CONTINUE
 }
 
@@ -52,6 +58,6 @@ public player_Unspeed(id)
 {
 	set_user_maxspeed(id, 250.0)
 	_set_handler(id, g_BlockId, -1, hPlayerPreThink)
-	g_PlayerSpeed[id] = 0.0
+	g_PlayerSpeed[id] = 0
 	return PLUGIN_CONTINUE
 }

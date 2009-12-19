@@ -43,6 +43,14 @@ stock bm_vector_mul(Float:vec[], const Float:ammount)
 	vec[2] *= ammount
 }
 
+// Substract 2 vectors
+stock bm_vector_substract(Float:vecDst[], const Float:vecSrc[])
+{
+	vecDst[0] -= vecSrc[0]
+	vecDst[1] -= vecSrc[1]
+	vecDst[2] -= vecSrc[2]
+}
+
 // Sum 2 vectors
 stock bm_vector_sum(Float:vecDst[], const Float:vecSrc[])
 {

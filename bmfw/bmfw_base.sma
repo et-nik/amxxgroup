@@ -22,6 +22,8 @@ new const g_Functions[][] =
 }
 
 new g_PlayerGrab[MAX_PLAYERS+1]
+new Float:g_PlayerGrabLen[MAX_PLAYERS+1]
+new Float:g_PlayerGrabLook[MAX_PLAYERS+1][3]
 new g_PlayerHandler[MAX_PLAYERS+1][MAX_BLOCKS][Handlers]
 new g_Blocks[MAX_BLOCKS][Blocks]
 new g_Count = -1
@@ -157,7 +159,7 @@ public bm_save()
 		if(!is_valid_ent(ent)) continue
 
 		type = entity_get_int(ent, EV_INT_body)
-		copy(name, charsmax(name), g_Blocks[type][bName])
+		copy(name, charsmax(name), g_Blocks[type][bModel])
 		entity_get_vector(ent, EV_VEC_origin, vOrigin)
 		server_print("%s:%s:%i:%f:%f:%f", BM_CLASSNAME, name, 1, vOrigin[0], vOrigin[1], vOrigin[2])
 	}
@@ -228,12 +230,15 @@ public bm_add(id)
 		entity_set_string(ent, EV_SZ_classname, BM_CLASSNAME)
 		entity_set_model(ent, model)
 		entity_set_size(ent, vMins, vMaxs)
-		entity_set_origin(ent, vorigin)
 		entity_set_int(ent, EV_INT_solid, SOLID_BBOX)
 		entity_set_int(ent, EV_INT_movetype, MOVETYPE_FLY)
 		entity_set_int(ent, EV_INT_body, bType)
 		entity_set_string(ent, EV_SZ_netname, g_Blocks[bType][bName])
+
 		// snaping code here
+		_bm_snap(ent, vorigin)
+
+		entity_set_origin(ent, vorigin)
 
 		if(g_Blocks[bType][bHandlers][Handlers:hSpawn] > 0)
 		{
@@ -252,17 +257,11 @@ public bm_del(id)
 {
 	new ent, body
 	get_user_aiming(id, ent, body)
-	if(_bm_is_block(ent))
+	if(_bm_is_block(ent) && !_bm_is_grabbed(ent))
 	{
 		remove_entity(ent)
 		g_BlocksCount--
 	}
-	return PLUGIN_HANDLED
-}
-
-public bm_grab_hold(id)
-{
-	g_PlayerGrab[id] = 0
 	return PLUGIN_HANDLED
 }
 
@@ -272,9 +271,36 @@ public bm_grab_release(id)
 	return PLUGIN_HANDLED
 }
 
+public bm_grab_hold(id)
+{
+	new ent, body
+	get_user_aiming(id, ent, body)
+	if(_bm_is_block(ent) && !_bm_is_grabbed(ent))
+	{
+		new iorigin[3], Float:vorigin[3], Float:end[3]
+		get_user_origin(id, iorigin, 1)
+		IVecFVec(iorigin, vorigin)
+		entity_get_vector(ent, EV_VEC_origin, end)
+		new Float:len = get_distance_f(vorigin, end)
+		g_PlayerGrab[id] = ent
+		g_PlayerGrabLen[id] = len
+	}
+	return PLUGIN_HANDLED
+}
+
 ////////////////////////////////////////////////////////////////////
 //// BMFW CORE
 ////////////////////////////////////////////////////////////////////
+
+stock _bm_is_grabbed(ent)
+{
+	for(new i = 1; i <= g_MaxClients; i++)
+	{
+		if(g_PlayerGrab[i] == ent)
+			return true
+	}
+	return false
+}
 
 stock _bm_is_block(ent)
 {
@@ -308,15 +334,15 @@ public _bm_is_on_block(id)
 	entity_get_vector(id, EV_VEC_maxs, pMaxs)
 	pOrigin[2] = pOrigin[2] - ((pSize[2] - 36.0) - (pMaxs[2] - 36.0))
 	vBottom[2] = pOrigin[2] - 1.0
-	bm_vector_copy(vHead, pOrigin)
+	vHead = pOrigin
 	vHead[2] += pSize[2] + 1.0
 
 	// To avoid cpu usage we can cache last touched block for same origin
 	if(bm_vector_compare(g_PlayerLastOrigin[id], pOrigin))
 		return g_PlayerLastBlock[id]
 
-	bm_vector_copy(g_PlayerLastOrigin[id], pOrigin)
-	for (new i = 0; i < 9; ++i)
+	g_PlayerLastOrigin[id] = pOrigin
+	for(new i = 0; i < 9; ++i)
 	{
 		vBottom[0] = pOrigin[0] + g_Corners[0][i]
 		vBottom[1] = pOrigin[1] - g_Corners[1][i]
@@ -333,6 +359,92 @@ public _bm_is_on_block(id)
 	}
 
 	return false
+}
+
+public _bm_snap(ent, Float:vOrigin[3])
+{
+	new Float:snapsize = 10.0
+	new Float:vReturn[3]
+	new Float:dist
+	new Float:olddist = 99999.9
+	new Float:vStart[3]
+	new Float:vEnd[3]
+	new tr, closest, face
+
+	new Float:vMins[3], Float:vMaxs[3]
+	new Float:vMinsTr[3], Float:vMaxsTr[3]
+
+	entity_get_vector(ent, EV_VEC_mins, vMins)
+	entity_get_vector(ent, EV_VEC_maxs, vMaxs)
+
+	for(new i = 0; i < 6; i++)
+	{
+		vStart = vOrigin
+		switch(i)
+		{
+			case 0: vStart[0] += vMins[0]
+			case 1: vStart[0] += vMaxs[0]
+			case 2: vStart[1] += vMins[1]
+			case 3: vStart[1] += vMaxs[1]
+			case 4: vStart[2] += vMins[2]
+			case 5: vStart[2] += vMaxs[2]
+		}
+
+		vEnd = vStart
+		switch(i)
+		{
+			case 0: vEnd[0] -= snapsize
+			case 1: vEnd[0] += snapsize
+			case 2: vEnd[1] -= snapsize
+			case 3: vEnd[1] += snapsize
+			case 4: vEnd[2] -= snapsize
+			case 5: vEnd[2] += snapsize
+		}
+
+		tr = trace_line(ent, vStart, vEnd, vReturn)
+
+		if(_bm_is_block(tr))
+		{
+			dist = get_distance_f(vStart, vReturn)
+			if(dist < olddist)
+			{
+				closest = tr
+				olddist = dist
+				face = i
+			}
+		}
+	}
+
+	if(is_valid_ent(closest))
+	{
+		entity_get_vector(closest, EV_VEC_origin, vReturn)
+		entity_get_vector(closest, EV_VEC_mins, vMinsTr)
+		entity_get_vector(closest, EV_VEC_maxs, vMaxsTr)
+
+		vOrigin = vReturn
+
+		switch(face)
+		{
+			case 0: vOrigin[0] += vMaxs[0] + vMaxsTr[0]
+			case 1: vOrigin[0] += vMins[0] + vMinsTr[0]
+			case 2: vOrigin[1] += vMaxs[1] + vMaxsTr[1]
+			case 3: vOrigin[1] += vMins[1] + vMinsTr[1]
+			case 4: vOrigin[2] += vMaxs[2] + vMaxsTr[2]
+			case 5: vOrigin[2] += vMins[2] + vMinsTr[2]
+		}
+	}
+
+	new other = g_MaxClients + 1
+	while((other = find_ent_in_sphere(other, vOrigin, 4.0)))
+	{
+		if(is_valid_ent(other) && _bm_is_block(other))
+		{
+			entity_get_vector(other, EV_VEC_maxs, vMaxsTr)
+			vOrigin[2] += vMaxsTr[2] + vMins[2]
+			return
+		}
+	} 
+	return
 }
 
 ////////////////////////////////////////////////////////////////////
@@ -389,6 +501,33 @@ public pfn_touch(touched, toucher)
 
 public client_PreThink(id)
 {
+	if(g_PlayerGrab[id])
+	{
+		new iorigin[3], ilook[3]
+		new Float:vdest[3], Float:vorigin[3], Float:vlook[3], Float:vdir[3], Float:vlen
+		get_user_origin(id, iorigin, 1)
+		get_user_origin(id, ilook, 3)
+		IVecFVec(iorigin, vorigin)
+		IVecFVec(ilook, vlook)
+		if(!bm_vector_compare(vlook, g_PlayerGrabLook[id]))
+		{
+			g_PlayerGrabLook[id] = vlook
+			vdir = vlook
+			bm_vector_substract(vdir, vorigin)
+			vlen = get_distance_f(vlook, vorigin)
+
+			if(vlen == 0.0) vlen = 1.0
+
+			vdest[0] = (vorigin[0] + vdir[0] * g_PlayerGrabLen[id] / vlen)
+			vdest[1] = (vorigin[1] + vdir[1] * g_PlayerGrabLen[id] / vlen)
+			vdest[2] = (vorigin[2] + vdir[2] * g_PlayerGrabLen[id] / vlen)
+			vdest[2] = float(floatround(vdest[2], floatround_floor))
+
+			_bm_snap(g_PlayerGrab[id], vdest)
+			entity_set_origin(g_PlayerGrab[id], vdest)
+		}
+	}
+
 	new ret, ret2
 	for(new i = 0; i <= g_Count; i++)
 	{
