@@ -9,7 +9,7 @@
 #define BM_COOLDOWN	30.0
 
 new const g_Name[] = "Drug"
-new const g_Model[] = "slap"
+new const g_Model[] = "drug"
 
 new const Float:g_Size[4] = { 64.0, 64.0, 8.0 }
 new const Float:g_SizeSmall[4] = { 16.0, 16.0, 8.0 }
