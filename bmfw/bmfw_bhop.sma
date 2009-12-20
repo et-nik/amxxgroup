@@ -44,8 +44,3 @@ public block_PlayerPreThink(id)
 	return PLUGIN_CONTINUE
 }
 
-public block_Spawn(ent)
-{
-	server_print("New block created!!! %i", ent)
-	return PLUGIN_CONTINUE
-}

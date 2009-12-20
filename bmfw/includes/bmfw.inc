@@ -4,7 +4,7 @@
 
 #pragma reqlib bmfw
 
-#define BM_BASEFILE	"models/blockmaker/bm_block_"
+#define BM_BASEFILE	"models/bmfw/bm_block_"
 #define BM_BASECLASS	"func_breakable"
 #define BM_CLASSNAME	"func_bmfw"
 
