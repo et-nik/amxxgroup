@@ -5,8 +5,8 @@
 #define	PLUGIN_VERSION	"0.1"
 
 #define BM_COOLDOWN	0.5
-#define BM_GLASSHEALTH	100.0
-#define BM_DAMAGESTEP	25.0
+#define BM_GLASSHEALTH	350.0
+#define BM_DAMAGESTEP	10.0
 
 new const g_Name[] = "Glass"
 new const g_Model[] = "glass"

@@ -21,6 +21,8 @@ new const g_Functions[][] =
 	"block_UpdateClientData"
 }
 
+new g_Config[128]
+new g_Map[64]
 new g_PlayerGrab[MAX_PLAYERS+1]
 new Float:g_PlayerGrabLen[MAX_PLAYERS+1]
 new Float:g_PlayerGrabLook[MAX_PLAYERS+1][3]
@@ -43,15 +45,40 @@ public plugin_init()
 	register_logevent("round_Start", 2, "1=Round_Start")
 	register_think(BM_CLASSNAME, "block_Think")
 
-	register_concmd("bm_list", "bm_list")
-	register_concmd("bm_save", "bm_save")
+	register_clcmd("bm_load", "bm_load")
+	register_clcmd("bm_save", "bm_save")
+	register_clcmd("bm_list", "bm_list")
 	register_clcmd("bm_add", "bm_add")
 	register_clcmd("bm_del", "bm_del")
+	register_clcmd("bm_rotate", "bm_rotate")
+	register_clcmd("bm_cleanup", "bm_cleanup")
 	register_clcmd("+bm_grab", "bm_grab_hold")
 	register_clcmd("-bm_grab", "bm_grab_release")
 
 	g_MaxEntities = get_global_int(GL_maxEntities)
 	g_MaxClients = get_global_int(GL_maxClients)
+}
+
+public plugin_cfg()
+{
+	get_localinfo("amxx_configsdir", g_Config, charsmax(g_Config))
+	strcat(g_Config, "/bmfw/", charsmax(g_Config))
+
+	if(!dir_exists(g_Config))
+	{
+		server_print("[BMFW] Creating config directory %s", g_Config)
+		mkdir(g_Config)
+	}
+
+	get_mapname(g_Map, charsmax(g_Map))
+	strcat(g_Config, g_Map, charsmax(g_Config))
+	strcat(g_Config, ".bmfw", charsmax(g_Config))
+
+	if(file_exists(g_Config))
+	{
+		server_print("[BMFW] Configuracion file found for current map")
+		bm_load(0)
+	}
 }
 
 public plugin_natives()
@@ -107,7 +134,7 @@ public _native_reg_block(plugin, count)
 	register_cvar(cvarname, version, FCVAR_SERVER|FCVAR_SPONLY)
 
 	g_Count++
-	server_print("Block registered %i:%s", g_Count, name)
+	server_print("[BMFW] Block registered %i:%s", g_Count, name)
 	copy(g_Blocks[g_Count][bName], charsmax(g_Blocks), name)
 	copy(g_Blocks[g_Count][bModel], charsmax(g_Blocks), model)
 	g_Blocks[g_Count][bPlugin] = plugin
@@ -132,12 +159,7 @@ public bm_list(id)
 {
 	for(new bType = 0; bType <= g_Count; bType++)
 	{
-		server_print("Block %i %s:%s", bType, g_Blocks[bType][bName], g_Blocks[bType][bModel])
-		for(new j = 0; j < _:Handlers; j++)
-		{
-			if(g_Blocks[bType][bHandlers][Handlers:j])
-				server_print("^tHandler %s -> %i", g_Functions[j], g_Blocks[bType][bHandlers][Handlers:j])
-		}
+		client_print(id, print_console, "Block %i %s:%s", bType, g_Blocks[bType][bName], g_Blocks[bType][bModel])
 	}
 	return PLUGIN_HANDLED
 }
@@ -146,23 +168,97 @@ public bm_list(id)
 //// BMFW COMMANDS
 ////////////////////////////////////////////////////////////////////
 
-public bm_save()
+public bm_load(id)
 {
 	new ent
-	new name[32]
-	new Float:vOrigin[3]
-	new type
+	new line[256]
+	new name[32], size[2], angle[2], vx[16], vy[16], vz[16]
+	new Float:vorigin[3]
 
-	server_print("Saving block to file")
+	// We need to remove every block before populate new ones from file
+	_bm_cleanup()
+	new fh = fopen(g_Config, "rt")
+	while(!feof(fh))
+	{
+		if(fgets(fh, line, charsmax(line)))
+		{
+			parse(line, name, charsmax(name), size, charsmax(size), angle, charsmax(angle), vx, charsmax(vx), vy, charsmax(vy), vz, charsmax(vz))
+
+			vorigin[0] = str_to_float(vx)
+			vorigin[1] = str_to_float(vy)
+			vorigin[2] = str_to_float(vz)
+			ent = _bm_create_block(_get_bm_id(name), vorigin, size)
+			if(is_valid_ent(ent))
+				_bm_rotate_block(ent, str_to_num(angle))
+		}
+	}
+	fclose(fh)
+	return PLUGIN_HANDLED
+}
+
+public bm_save(id)
+{
+	new ent
+	new name[32], model[128], line[256], size[2]
+	new Float:vOrigin[3], Float:vAngles[3]
+	new type, angle, count
+
+	server_print("[BMFW] Saving blocks to file %s", g_Config)
+
+	if(file_exists(g_Config)) unlink(g_Config)
+
+	new fh = fopen(g_Config, "wt")
+
+	if(!fh)
+	{
+		server_print("[BMFW] An error ocurred while writing blocks to file")
+		return PLUGIN_HANDLED
+	}
+
 	while((ent = find_ent_by_class(ent, BM_CLASSNAME)))
 	{
 		if(!is_valid_ent(ent)) continue
 
+		count++
 		type = entity_get_int(ent, EV_INT_body)
 		copy(name, charsmax(name), g_Blocks[type][bModel])
 		entity_get_vector(ent, EV_VEC_origin, vOrigin)
-		server_print("%s:%s:%i:%f:%f:%f", BM_CLASSNAME, name, 1, vOrigin[0], vOrigin[1], vOrigin[2])
+		entity_get_vector(ent, EV_VEC_angles, vAngles)
+		entity_get_string(ent, EV_SZ_model, model, charsmax(model))
+
+		if(vAngles[0] == 0.0 && vAngles[2] == 0.0)
+		{
+			angle = 0
+		}
+		else if(vAngles[0] == 90.0 && vAngles[2] == 0.0)
+		{
+			angle = 1
+		}
+		else
+		{
+			angle = 2
+		}
+
+		if(contain(model, "_large.mdl") != -1)
+		{
+			size[0] = 'l'
+		}
+		else if(contain(model, "_small.mdl") != -1)
+		{
+			size[0] = 's'
+		}
+		else
+		{
+			size[0] = 'd'
+		}
+
+		formatex(line, charsmax(line), "%s %s %i %f %f %f^n", name, size, angle, vOrigin[0], vOrigin[1], vOrigin[2])
+		fputs(fh, line)
 	}
+	fclose(fh)
+	server_print("[BMFW] Saved %i blocks in %s file", count, g_Config)
+	client_print(id, print_console, "[BMFW] Saved %i blocks in %s file", count, g_Config)
+
 	return PLUGIN_HANDLED
 }
 
@@ -170,13 +266,13 @@ public bm_add(id)
 {
 	if(g_BlocksCount >= MAX_ENTBLOCKS)
 	{
-		server_print("You have reached the maximum of blocks you can create")
+		server_print("[BMFW] You have reached the maximum of blocks you can create")
 		return PLUGIN_HANDLED
 	}
 
 	if(entity_count() > (0.9 * g_MaxEntities))
 	{
-		server_print("There's no enought save space for new entities")
+		server_print("[BMFW] There's no enought save space for new entities")
 		return PLUGIN_HANDLED
 	}
 
@@ -184,72 +280,16 @@ public bm_add(id)
 	read_argv(1, szTemp, charsmax(szTemp))
 	read_argv(2, size, charsmax(size))
 
-	new bType = str_to_num(szTemp)
+	new bType = _get_bm_id(szTemp)
 
-	if(bType > g_Count)
+	if((bType > g_Count) || (bType < 0))
 		return PLUGIN_HANDLED
-
-	server_print("Added block %i (%s) by player %i", bType, g_Blocks[bType][bModel], id)
-
-	new model[128], modelsize[16]
-	new Float:vMins[3], Float:vMaxs[3]
-	switch(size[0])
-	{
-		case 'l':
-		{
-			copy(modelsize, charsmax(modelsize), BM_MODELLARGE)
-			bm_vector_copy(vMins, g_Blocks[bType][bSizeLarge])
-			bm_vector_copy(vMaxs, g_Blocks[bType][bSizeLarge])
-		}
-		case 's':
-		{
-			copy(modelsize, charsmax(modelsize), BM_MODELSMALL)
-			bm_vector_copy(vMins, g_Blocks[bType][bSizeSmall])
-			bm_vector_copy(vMaxs, g_Blocks[bType][bSizeSmall])
-		}
-		default:
-		{
-			bm_vector_copy(vMins, g_Blocks[bType][bSize])
-			bm_vector_copy(vMaxs, g_Blocks[bType][bSize])
-		}
-	}
-	bm_vector_mul(vMins, -0.5)
-	bm_vector_mul(vMaxs, 0.5)
-
-	formatex(model, charsmax(model), "%s%s%s.mdl", BM_BASEFILE, g_Blocks[bType][bModel], modelsize)
 
 	new origin[3], Float:vorigin[3]
 	get_user_origin(id, origin, 3)
 	IVecFVec(origin, vorigin)
-	vorigin[2] -= vMins[2]
 
-	new ent = create_entity(BM_BASECLASS)
-	if(is_valid_ent(ent))
-	{
-		g_BlocksCount++
-		entity_set_string(ent, EV_SZ_classname, BM_CLASSNAME)
-		entity_set_model(ent, model)
-		entity_set_size(ent, vMins, vMaxs)
-		entity_set_int(ent, EV_INT_solid, SOLID_BBOX)
-		entity_set_int(ent, EV_INT_movetype, MOVETYPE_FLY)
-		entity_set_int(ent, EV_INT_body, bType)
-		entity_set_string(ent, EV_SZ_netname, g_Blocks[bType][bName])
-
-		// snaping code here
-		_bm_snap(ent, vorigin)
-
-		entity_set_origin(ent, vorigin)
-
-		if(g_Blocks[bType][bHandlers][Handlers:hSpawn] > 0)
-		{
-			if(callfunc_begin_i(g_Blocks[bType][bHandlers][Handlers:hSpawn], g_Blocks[bType][bPlugin]) > 0)
-			{
-				callfunc_push_int(ent)
-				new ret = callfunc_end()
-				return ret
-			}
-		}
-	}
+	_bm_create_block(bType, vorigin, size)
 	return PLUGIN_HANDLED
 }
 
@@ -262,6 +302,23 @@ public bm_del(id)
 		remove_entity(ent)
 		g_BlocksCount--
 	}
+	return PLUGIN_HANDLED
+}
+
+public bm_rotate(id)
+{
+	new ent, body
+	get_user_aiming(id, ent, body)
+	if(_bm_is_block(ent) && !_bm_is_grabbed(ent))
+	{
+		_bm_rotate_block(ent, -1)
+	}
+	return PLUGIN_HANDLED
+}
+
+public bm_cleanup(id)
+{
+	_bm_cleanup()
 	return PLUGIN_HANDLED
 }
 
@@ -291,6 +348,149 @@ public bm_grab_hold(id)
 ////////////////////////////////////////////////////////////////////
 //// BMFW CORE
 ////////////////////////////////////////////////////////////////////
+
+public _bm_cleanup()
+{
+	new ent
+	while((ent = find_ent_by_class(ent, BM_CLASSNAME)))
+	{
+		if(!is_valid_ent(ent)) continue
+		remove_entity(ent)
+	}
+}
+
+public _bm_rotate_block(ent, opt)
+{
+	new Float:vAngles[3], Float:vMins[3], Float:vMaxs[3], Float:ftemp
+
+	entity_get_vector(ent, EV_VEC_angles, vAngles)
+	entity_get_vector(ent, EV_VEC_mins, vMins)
+	entity_get_vector(ent, EV_VEC_maxs, vMaxs)
+
+	switch(opt)
+	{
+		case -1:
+		{
+			if(vAngles[0] == 0.0 && vAngles[2] == 0.0)
+			{
+				vAngles[0] = 90.0
+			}
+			else if(vAngles[0] == 90.0 && vAngles[2] == 0.0)
+			{
+				vAngles[0] = 90.0
+				vAngles[2] = 90.0
+			}
+			else
+			{
+				vAngles = Float:{0.0, 0.0, 0.0}
+			}
+
+			ftemp = vMins[0]
+			vMins[0] = vMins[2]
+			vMins[2] = vMins[1]
+			vMins[1] = ftemp
+			ftemp = vMaxs[0]
+			vMaxs[0] = vMaxs[2]
+			vMaxs[2] = vMaxs[1]
+			vMaxs[1] = ftemp
+		}
+		case 1:
+		{
+			vAngles[0] = 90.0
+
+			ftemp = vMins[0]
+			vMins[0] = vMins[2]
+			vMins[2] = vMins[1]
+			vMins[1] = ftemp
+			ftemp = vMaxs[0]
+			vMaxs[0] = vMaxs[2]
+			vMaxs[2] = vMaxs[1]
+			vMaxs[1] = ftemp
+		}
+		case 2:
+		{
+			vAngles[0] = vAngles[2] = 90.0
+
+			ftemp = vMins[0]
+			vMins[0] = vMins[1]
+			vMins[1] = vMins[2]
+			vMins[2] = ftemp
+			ftemp = vMaxs[0]
+			vMaxs[0] = vMaxs[1]
+			vMaxs[1] = vMaxs[2]
+			vMaxs[2] = ftemp
+		}
+		default:
+		{
+			vAngles = Float:{0.0, 0.0, 0.0}
+		}
+	}
+			
+
+	entity_set_vector(ent, EV_VEC_angles, vAngles)
+	entity_set_size(ent, vMins, vMaxs)
+}
+
+public _bm_create_block(bType, Float:vorigin[3], size[2])
+{
+	new model[128], modelsize[16]
+	new Float:vMins[3], Float:vMaxs[3]
+	switch(size[0])
+	{
+		case 'l':
+		{
+			copy(modelsize, charsmax(modelsize), BM_MODELLARGE)
+			bm_vector_copy(vMins, g_Blocks[bType][bSizeLarge])
+			bm_vector_copy(vMaxs, g_Blocks[bType][bSizeLarge])
+		}
+		case 's':
+		{
+			copy(modelsize, charsmax(modelsize), BM_MODELSMALL)
+			bm_vector_copy(vMins, g_Blocks[bType][bSizeSmall])
+			bm_vector_copy(vMaxs, g_Blocks[bType][bSizeSmall])
+		}
+		default:
+		{
+			bm_vector_copy(vMins, g_Blocks[bType][bSize])
+			bm_vector_copy(vMaxs, g_Blocks[bType][bSize])
+		}
+	}
+	bm_vector_mul(vMins, -0.5)
+	bm_vector_mul(vMaxs, 0.5)
+
+	formatex(model, charsmax(model), "%s%s%s.mdl", BM_BASEFILE, g_Blocks[bType][bModel], modelsize)
+
+	vorigin[2] -= vMins[2]
+
+	new ent = create_entity(BM_BASECLASS)
+	if(is_valid_ent(ent))
+	{
+		g_BlocksCount++
+		entity_set_string(ent, EV_SZ_classname, BM_CLASSNAME)
+		entity_set_model(ent, model)
+		entity_set_size(ent, vMins, vMaxs)
+		entity_set_int(ent, EV_INT_solid, SOLID_BBOX)
+		entity_set_int(ent, EV_INT_movetype, MOVETYPE_FLY)
+		entity_set_int(ent, EV_INT_body, bType)
+		entity_set_string(ent, EV_SZ_netname, g_Blocks[bType][bName])
+
+		// snaping code here
+		_bm_snap(ent, vorigin)
+
+		entity_set_origin(ent, vorigin)
+
+		if(g_Blocks[bType][bHandlers][Handlers:hSpawn] > 0)
+		{
+			if(callfunc_begin_i(g_Blocks[bType][bHandlers][Handlers:hSpawn], g_Blocks[bType][bPlugin]) > 0)
+			{
+				callfunc_push_int(ent)
+				callfunc_end()
+				return ent
+			}
+		}
+	}
+	return ent
+}
 
 stock _bm_is_grabbed(ent)
 {
@@ -447,6 +647,16 @@ public _bm_snap(ent, Float:vOrigin[3])
 	return
 }
 
+public _get_bm_id(const name[32])
+{
+	for(new i = 0; i <= g_Count; i++)
+	{
+		if(equal(g_Blocks[i][bModel], name))
+			return i
+	}
+	return -1
+}
+
 ////////////////////////////////////////////////////////////////////
 //// BMFW MAGIC!!!
 ////////////////////////////////////////////////////////////////////
@@ -463,14 +673,15 @@ public round_Start()
 
 public pfn_touch(touched, toucher)
 {
-	if(!_bm_is_block(touched) || !is_user_alive(toucher))
+	if(!toucher || !touched || !is_user_alive(toucher) || !_bm_is_block(touched))
 		return PLUGIN_CONTINUE
 
 	new bType = entity_get_int(touched, EV_INT_body)
-	if(!(g_Blocks[bType][bTouch] & TOUCH_ALL) &&  (_bm_is_on_block(toucher) != touched))
-	{
+	if(!(g_Blocks[bType][bTouch] & (TOUCH_ALL | TOUCH_FOOT | TOUCH_HEAD | TOUCH_OTHER)))
 		return PLUGIN_CONTINUE
-	}
+
+	if(!(g_Blocks[bType][bTouch] & TOUCH_ALL) &&  (_bm_is_on_block(toucher) != touched))
+		return PLUGIN_CONTINUE
 
 	// To avoid cpu usage we can cache last touched block for same origin
 	g_PlayerLastBlock[toucher] = touched
