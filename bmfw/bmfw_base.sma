@@ -157,7 +157,7 @@ public _native_reg_block(plugin, count)
 
 public bm_list(id, level, cid)
 {
-	if(!cmd_access(id, level, cid, 2))
+	if(!cmd_access(id, level, cid, 1))
 		return PLUGIN_HANDLED
 
 	for(new bType = 0; bType <= g_Count; bType++)
@@ -169,7 +169,7 @@ public bm_list(id, level, cid)
 
 public bm_load(id, level, cid)
 {
-	if(!cmd_access(id, level, cid, 2))
+	if(!cmd_access(id, level, cid, 1))
 		return PLUGIN_HANDLED
 
 	_bm_load()
@@ -178,7 +178,7 @@ public bm_load(id, level, cid)
 
 public bm_save(id, level, cid)
 {
-	if(!cmd_access(id, level, cid, 2))
+	if(!cmd_access(id, level, cid, 1))
 		return PLUGIN_HANDLED
 
 	new ent
@@ -247,7 +247,7 @@ public bm_save(id, level, cid)
 
 public bm_add(id, level, cid)
 {
-	if(!cmd_access(id, level, cid, 2))
+	if(!cmd_access(id, level, cid, 1))
 		return PLUGIN_HANDLED
 
 	if(g_BlocksCount >= MAX_ENTBLOCKS)
@@ -281,7 +281,7 @@ public bm_add(id, level, cid)
 
 public bm_del(id, level, cid)
 {
-	if(!cmd_access(id, level, cid, 2))
+	if(!cmd_access(id, level, cid, 1))
 		return PLUGIN_HANDLED
 
 	new ent, body
@@ -296,7 +296,7 @@ public bm_del(id, level, cid)
 
 public bm_rotate(id, level, cid)
 {
-	if(!cmd_access(id, level, cid, 2))
+	if(!cmd_access(id, level, cid, 1))
 		return PLUGIN_HANDLED
 
 	new ent, body
@@ -310,7 +310,7 @@ public bm_rotate(id, level, cid)
 
 public bm_cleanup(id, level, cid)
 {
-	if(!cmd_access(id, level, cid, 2))
+	if(!cmd_access(id, level, cid, 1))
 		return PLUGIN_HANDLED
 
 	_bm_cleanup()
@@ -319,7 +319,7 @@ public bm_cleanup(id, level, cid)
 
 public bm_grab_release(id, level, cid)
 {
-	if(!cmd_access(id, level, cid, 2))
+	if(!cmd_access(id, level, cid, 1))
 		return PLUGIN_HANDLED
 
 	g_PlayerGrab[id] = 0
@@ -328,7 +328,7 @@ public bm_grab_release(id, level, cid)
 
 public bm_grab_hold(id, level, cid)
 {
-	if(!cmd_access(id, level, cid, 2))
+	if(!cmd_access(id, level, cid, 1))
 		return PLUGIN_HANDLED
 
 	new ent, body
