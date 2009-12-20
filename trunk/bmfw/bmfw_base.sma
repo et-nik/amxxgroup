@@ -45,15 +45,15 @@ public plugin_init()
 	register_logevent("round_Start", 2, "1=Round_Start")
 	register_think(BM_CLASSNAME, "block_Think")
 
-	register_clcmd("bm_load", "bm_load")
-	register_clcmd("bm_save", "bm_save")
-	register_clcmd("bm_list", "bm_list")
-	register_clcmd("bm_add", "bm_add")
-	register_clcmd("bm_del", "bm_del")
-	register_clcmd("bm_rotate", "bm_rotate")
-	register_clcmd("bm_cleanup", "bm_cleanup")
-	register_clcmd("+bm_grab", "bm_grab_hold")
-	register_clcmd("-bm_grab", "bm_grab_release")
+	register_clcmd("bm_load", "bm_load", ADMIN_RCON)
+	register_clcmd("bm_save", "bm_save", ADMIN_RCON)
+	register_clcmd("bm_list", "bm_list", ADMIN_KICK)
+	register_clcmd("bm_add", "bm_add", ADMIN_KICK)
+	register_clcmd("bm_del", "bm_del", ADMIN_KICK)
+	register_clcmd("bm_rotate", "bm_rotate", ADMIN_KICK)
+	register_clcmd("bm_cleanup", "bm_cleanup", ADMIN_KICK)
+	register_clcmd("+bm_grab", "bm_grab_hold", ADMIN_KICK)
+	register_clcmd("-bm_grab", "bm_grab_release", ADMIN_KICK)
 
 	g_MaxEntities = get_global_int(GL_maxEntities)
 	g_MaxClients = get_global_int(GL_maxClients)
@@ -77,7 +77,7 @@ public plugin_cfg()
 	if(file_exists(g_Config))
 	{
 		server_print("[BMFW] Configuracion file found for current map")
-		bm_load(0)
+		_bm_load()
 	}
 }
 
@@ -152,11 +152,14 @@ public _native_reg_block(plugin, count)
 }
 
 ////////////////////////////////////////////////////////////////////
-//// TESTING
+//// BMFW COMMANDS
 ////////////////////////////////////////////////////////////////////
 
-public bm_list(id)
+public bm_list(id, level, cid)
 {
+	if(!cmd_access(id, level, cid, 2))
+		return PLUGIN_HANDLED
+
 	for(new bType = 0; bType <= g_Count; bType++)
 	{
 		client_print(id, print_console, "Block %i %s:%s", bType, g_Blocks[bType][bName], g_Blocks[bType][bModel])
@@ -164,40 +167,20 @@ public bm_list(id)
 	return PLUGIN_HANDLED
 }
 
-////////////////////////////////////////////////////////////////////
-//// BMFW COMMANDS
-////////////////////////////////////////////////////////////////////
-
-public bm_load(id)
+public bm_load(id, level, cid)
 {
-	new ent
-	new line[256]
-	new name[32], size[2], angle[2], vx[16], vy[16], vz[16]
-	new Float:vorigin[3]
+	if(!cmd_access(id, level, cid, 2))
+		return PLUGIN_HANDLED
 
-	// We need to remove every block before populate new ones from file
-	_bm_cleanup()
-	new fh = fopen(g_Config, "rt")
-	while(!feof(fh))
-	{
-		if(fgets(fh, line, charsmax(line)))
-		{
-			parse(line, name, charsmax(name), size, charsmax(size), angle, charsmax(angle), vx, charsmax(vx), vy, charsmax(vy), vz, charsmax(vz))
-
-			vorigin[0] = str_to_float(vx)
-			vorigin[1] = str_to_float(vy)
-			vorigin[2] = str_to_float(vz)
-			ent = _bm_create_block(_get_bm_id(name), vorigin, size)
-			if(is_valid_ent(ent))
-				_bm_rotate_block(ent, str_to_num(angle))
-		}
-	}
-	fclose(fh)
+	_bm_load()
 	return PLUGIN_HANDLED
 }
 
-public bm_save(id)
+public bm_save(id, level, cid)
 {
+	if(!cmd_access(id, level, cid, 2))
+		return PLUGIN_HANDLED
+
 	new ent
 	new name[32], model[128], line[256], size[2]
 	new Float:vOrigin[3], Float:vAngles[3]
@@ -262,8 +245,11 @@ public bm_save(id)
 	return PLUGIN_HANDLED
 }
 
-public bm_add(id)
+public bm_add(id, level, cid)
 {
+	if(!cmd_access(id, level, cid, 2))
+		return PLUGIN_HANDLED
+
 	if(g_BlocksCount >= MAX_ENTBLOCKS)
 	{
 		server_print("[BMFW] You have reached the maximum of blocks you can create")
@@ -293,8 +279,11 @@ public bm_add(id)
 	return PLUGIN_HANDLED
 }
 
-public bm_del(id)
+public bm_del(id, level, cid)
 {
+	if(!cmd_access(id, level, cid, 2))
+		return PLUGIN_HANDLED
+
 	new ent, body
 	get_user_aiming(id, ent, body)
 	if(_bm_is_block(ent) && !_bm_is_grabbed(ent))
@@ -305,8 +294,11 @@ public bm_del(id)
 	return PLUGIN_HANDLED
 }
 
-public bm_rotate(id)
+public bm_rotate(id, level, cid)
 {
+	if(!cmd_access(id, level, cid, 2))
+		return PLUGIN_HANDLED
+
 	new ent, body
 	get_user_aiming(id, ent, body)
 	if(_bm_is_block(ent) && !_bm_is_grabbed(ent))
@@ -316,20 +308,29 @@ public bm_rotate(id)
 	return PLUGIN_HANDLED
 }
 
-public bm_cleanup(id)
+public bm_cleanup(id, level, cid)
 {
+	if(!cmd_access(id, level, cid, 2))
+		return PLUGIN_HANDLED
+
 	_bm_cleanup()
 	return PLUGIN_HANDLED
 }
 
-public bm_grab_release(id)
+public bm_grab_release(id, level, cid)
 {
+	if(!cmd_access(id, level, cid, 2))
+		return PLUGIN_HANDLED
+
 	g_PlayerGrab[id] = 0
 	return PLUGIN_HANDLED
 }
 
-public bm_grab_hold(id)
+public bm_grab_hold(id, level, cid)
 {
+	if(!cmd_access(id, level, cid, 2))
+		return PLUGIN_HANDLED
+
 	new ent, body
 	get_user_aiming(id, ent, body)
 	if(_bm_is_block(ent) && !_bm_is_grabbed(ent))
@@ -348,6 +349,34 @@ public bm_grab_hold(id)
 ////////////////////////////////////////////////////////////////////
 //// BMFW CORE
 ////////////////////////////////////////////////////////////////////
+
+public _bm_load()
+{
+	new ent
+	new line[256]
+	new name[32], size[2], angle[2], vx[16], vy[16], vz[16]
+	new Float:vorigin[3]
+
+	// We need to remove every block before populate new ones from file
+	_bm_cleanup()
+	new fh = fopen(g_Config, "rt")
+	while(!feof(fh))
+	{
+		if(fgets(fh, line, charsmax(line)))
+		{
+			parse(line, name, charsmax(name), size, charsmax(size), angle, charsmax(angle), vx, charsmax(vx), vy, charsmax(vy), vz, charsmax(vz))
+
+			vorigin[0] = str_to_float(vx)
+			vorigin[1] = str_to_float(vy)
+			vorigin[2] = str_to_float(vz)
+			ent = _bm_create_block(_get_bm_id(name), vorigin, size)
+			if(is_valid_ent(ent))
+				_bm_rotate_block(ent, str_to_num(angle))
+		}
+	}
+	fclose(fh)
+	return PLUGIN_HANDLED
+}
 
 public _bm_cleanup()
 {

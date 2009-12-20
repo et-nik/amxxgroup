@@ -1,4 +1,5 @@
 #include <amxmodx>
+#include <amxmisc>
 #include <engine>
 #include <hamsandwich>
 
