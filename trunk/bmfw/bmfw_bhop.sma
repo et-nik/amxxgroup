@@ -2,7 +2,7 @@
 
 #define	PLUGIN_NAME	"BM Bunny Hop"
 #define	PLUGIN_AUTHOR	"JoRoPiTo"
-#define	PLUGIN_VERSION	"0.1"
+#define	PLUGIN_VERSION	"0.2"
 
 #define BHOP_VELOCITY	250.0
 #define BM_COOLDOWN	-1.0
@@ -38,8 +38,10 @@ public block_PlayerPreThink(id)
 {
 	new Float:velocity[3]
 	entity_get_vector(id, EV_VEC_velocity, velocity)
-	velocity[2] += (velocity[2] >= 0.0) ? BHOP_VELOCITY : (BHOP_VELOCITY - velocity[2])
+	velocity[2] += (velocity[2] >= 0.0) ? BHOP_VELOCITY : (BHOP_VELOCITY + velocity[2])
 	entity_set_vector(id, EV_VEC_velocity, velocity)
+	entity_set_float(id, EV_FL_fuser2, 0.0)
+	entity_set_int(id, EV_INT_gaitsequence, 6)
 	_set_handler(id, g_BlockId, -1, hPlayerPreThink)
 	return PLUGIN_CONTINUE
 }
