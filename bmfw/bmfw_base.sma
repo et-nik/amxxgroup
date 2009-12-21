@@ -2,12 +2,12 @@
 
 #define	PLUGIN_NAME	"BM FrameWork"
 #define	PLUGIN_AUTHOR	"JoRoPiTo"
-#define	PLUGIN_VERSION	"0.1"
+#define	PLUGIN_VERSION	"0.2"
 #define	PLUGIN_CVAR	"bmfw"
 
 #define MAX_PLAYERS	32
 #define MAX_BLOCKS	64
-#define MAX_ENTBLOCKS	400
+#define MAX_ENTBLOCKS	250
 
 new const g_Corners[][] = { {-16, 16, 16, -16, -8, 8, 8, -8, 0}, {-16, -16, 16, 16, -8, -8, 8, 8, 0} }
 new const g_Functions[][] =
@@ -77,7 +77,7 @@ public plugin_cfg()
 	if(file_exists(g_Config))
 	{
 		server_print("[BMFW] Configuracion file found for current map")
-		_bm_load()
+		_native_bm_load()
 	}
 }
 
@@ -86,6 +86,11 @@ public plugin_natives()
 	register_library(PLUGIN_CVAR)
 	register_native("_set_handler", "_native_set_handler")
 	register_native("_reg_block", "_native_reg_block")
+	register_native("_bm_load", "_native_bm_load")
+	register_native("_bm_save", "_native_bm_save")
+	register_native("_bm_cleanup", "_native_bm_cleanup")
+	register_native("_bm_rotate_block", "_native_rotate_block")
+	register_native("_bm_create_block", "_native_create_block")
 
 	return PLUGIN_CONTINUE
 }
@@ -172,7 +177,7 @@ public bm_load(id, level, cid)
 	if(!cmd_access(id, level, cid, 1))
 		return PLUGIN_HANDLED
 
-	_bm_load()
+	_native_bm_load()
 	return PLUGIN_HANDLED
 }
 
@@ -181,6 +186,117 @@ public bm_save(id, level, cid)
 	if(!cmd_access(id, level, cid, 1))
 		return PLUGIN_HANDLED
 
+	_native_bm_save(id)
+	return PLUGIN_HANDLED
+}
+
+public bm_add(id, level, cid)
+{
+	if(!cmd_access(id, level, cid, 1))
+		return PLUGIN_HANDLED
+
+	if(g_BlocksCount >= MAX_ENTBLOCKS)
+	{
+		server_print("[BMFW] You have reached the maximum of blocks you can create")
+		return PLUGIN_HANDLED
+	}
+
+	if(entity_count() > (0.9 * g_MaxEntities))
+	{
+		server_print("[BMFW] There's no enought save space for new entities")
+		return PLUGIN_HANDLED
+	}
+
+	static szTemp[32], size[2]
+	read_argv(1, szTemp, charsmax(szTemp))
+	read_argv(2, size, charsmax(size))
+
+	new bType = _get_bm_id(szTemp)
+
+	if((bType > g_Count) || (bType < 0))
+		return PLUGIN_HANDLED
+
+	new origin[3], Float:vorigin[3]
+	get_user_origin(id, origin, 3)
+	IVecFVec(origin, vorigin)
+
+	_native_create_block(bType, vorigin, size)
+	return PLUGIN_HANDLED
+}
+
+public bm_del(id, level, cid)
+{
+	if(!cmd_access(id, level, cid, 1))
+		return PLUGIN_HANDLED
+
+	new ent, body
+	get_user_aiming(id, ent, body)
+	if(_bm_is_block(ent) && !_bm_is_grabbed(ent))
+	{
+		remove_entity(ent)
+		g_BlocksCount--
+	}
+	return PLUGIN_HANDLED
+}
+
+public bm_rotate(id, level, cid)
+{
+	if(!cmd_access(id, level, cid, 1))
+		return PLUGIN_HANDLED
+
+	new ent, body
+	get_user_aiming(id, ent, body)
+	if(_bm_is_block(ent) && !_bm_is_grabbed(ent))
+	{
+		_native_rotate_block(ent, -1)
+	}
+	return PLUGIN_HANDLED
+}
+
+public bm_cleanup(id, level, cid)
+{
+	if(!cmd_access(id, level, cid, 1))
+		return PLUGIN_HANDLED
+
+	_native_bm_cleanup()
+	return PLUGIN_HANDLED
+}
+
+public bm_grab_release(id, level, cid)
+{
+	if(!cmd_access(id, level, cid, 1))
+		return PLUGIN_HANDLED
+
+	g_PlayerGrab[id] = 0
+	return PLUGIN_HANDLED
+}
+
+public bm_grab_hold(id, level, cid)
+{
+	if(!cmd_access(id, level, cid, 1))
+		return PLUGIN_HANDLED
+
+	new ent, body
+	get_user_aiming(id, ent, body)
+	if(_bm_is_block(ent) && !_bm_is_grabbed(ent))
+	{
+		new iorigin[3], Float:vorigin[3], Float:end[3]
+		get_user_origin(id, iorigin, 1)
+		IVecFVec(iorigin, vorigin)
+		entity_get_vector(ent, EV_VEC_origin, end)
+		new Float:len = get_distance_f(vorigin, end)
+		g_PlayerGrab[id] = ent
+		g_PlayerGrabLen[id] = len
+	}
+	return PLUGIN_HANDLED
+}
+
+////////////////////////////////////////////////////////////////////
+//// BMFW CORE
+////////////////////////////////////////////////////////////////////
+
+public _native_bm_save(id)
+{
 	new ent
 	new name[32], model[128], line[256], size[2]
 	new Float:vOrigin[3], Float:vAngles[3]
@@ -188,7 +304,8 @@ public bm_save(id, level, cid)
 
 	server_print("[BMFW] Saving blocks to file %s", g_Config)
 
-	if(file_exists(g_Config)) unlink(g_Config)
+	if(file_exists(g_Config))
+		unlink(g_Config)
 
 	new fh = fopen(g_Config, "wt")
 
@@ -245,112 +362,7 @@ public bm_save(id, level, cid)
 	return PLUGIN_HANDLED
 }
 
-public bm_add(id, level, cid)
-{
-	if(!cmd_access(id, level, cid, 1))
-		return PLUGIN_HANDLED
-
-	if(g_BlocksCount >= MAX_ENTBLOCKS)
-	{
-		server_print("[BMFW] You have reached the maximum of blocks you can create")
-		return PLUGIN_HANDLED
-	}
-
-	if(entity_count() > (0.9 * g_MaxEntities))
-	{
-		server_print("[BMFW] There's no enought save space for new entities")
-		return PLUGIN_HANDLED
-	}
-
-	static szTemp[32], size[2]
-	read_argv(1, szTemp, charsmax(szTemp))
-	read_argv(2, size, charsmax(size))
-
-	new bType = _get_bm_id(szTemp)
-
-	if((bType > g_Count) || (bType < 0))
-		return PLUGIN_HANDLED
-
-	new origin[3], Float:vorigin[3]
-	get_user_origin(id, origin, 3)
-	IVecFVec(origin, vorigin)
-
-	_bm_create_block(bType, vorigin, size)
-	return PLUGIN_HANDLED
-}
-
-public bm_del(id, level, cid)
-{
-	if(!cmd_access(id, level, cid, 1))
-		return PLUGIN_HANDLED
-
-	new ent, body
-	get_user_aiming(id, ent, body)
-	if(_bm_is_block(ent) && !_bm_is_grabbed(ent))
-	{
-		remove_entity(ent)
-		g_BlocksCount--
-	}
-	return PLUGIN_HANDLED
-}
-
-public bm_rotate(id, level, cid)
-{
-	if(!cmd_access(id, level, cid, 1))
-		return PLUGIN_HANDLED
-
-	new ent, body
-	get_user_aiming(id, ent, body)
-	if(_bm_is_block(ent) && !_bm_is_grabbed(ent))
-	{
-		_bm_rotate_block(ent, -1)
-	}
-	return PLUGIN_HANDLED
-}
-
-public bm_cleanup(id, level, cid)
-{
-	if(!cmd_access(id, level, cid, 1))
-		return PLUGIN_HANDLED
-
-	_bm_cleanup()
-	return PLUGIN_HANDLED
-}
-
-public bm_grab_release(id, level, cid)
-{
-	if(!cmd_access(id, level, cid, 1))
-		return PLUGIN_HANDLED
-
-	g_PlayerGrab[id] = 0
-	return PLUGIN_HANDLED
-}
-
-public bm_grab_hold(id, level, cid)
-{
-	if(!cmd_access(id, level, cid, 1))
-		return PLUGIN_HANDLED
-
-	new ent, body
-	get_user_aiming(id, ent, body)
-	if(_bm_is_block(ent) && !_bm_is_grabbed(ent))
-	{
-		new iorigin[3], Float:vorigin[3], Float:end[3]
-		get_user_origin(id, iorigin, 1)
-		IVecFVec(iorigin, vorigin)
-		entity_get_vector(ent, EV_VEC_origin, end)
-		new Float:len = get_distance_f(vorigin, end)
-		g_PlayerGrab[id] = ent
-		g_PlayerGrabLen[id] = len
-	}
-	return PLUGIN_HANDLED
-}
-
-////////////////////////////////////////////////////////////////////
-//// BMFW CORE
-////////////////////////////////////////////////////////////////////
-
-public _bm_load()
+public _native_bm_load()
 {
 	new ent
 	new line[256]
@@ -358,7 +370,7 @@ public _bm_load()
 	new Float:vorigin[3]
 
 	// We need to remove every block before populate new ones from file
-	_bm_cleanup()
+	_native_bm_cleanup()
 	new fh = fopen(g_Config, "rt")
 	while(!feof(fh))
 	{
@@ -369,16 +381,16 @@ public _bm_load()
 			vorigin[0] = str_to_float(vx)
 			vorigin[1] = str_to_float(vy)
 			vorigin[2] = str_to_float(vz)
-			ent = _bm_create_block(_get_bm_id(name), vorigin, size)
+			ent = _native_create_block(_get_bm_id(name), vorigin, size)
 			if(is_valid_ent(ent))
-				_bm_rotate_block(ent, str_to_num(angle))
+				_native_rotate_block(ent, str_to_num(angle))
 		}
 	}
 	fclose(fh)
 	return PLUGIN_HANDLED
 }
 
-public _bm_cleanup()
+public _native_bm_cleanup()
 {
 	new ent
 	while((ent = find_ent_by_class(ent, BM_CLASSNAME)))
@@ -388,7 +400,7 @@ public _bm_cleanup()
 	}
 }
 
-public _bm_rotate_block(ent, opt)
+public _native_rotate_block(ent, opt)
 {
 	new Float:vAngles[3], Float:vMins[3], Float:vMaxs[3], Float:ftemp
 
@@ -460,7 +472,7 @@ public _bm_rotate_block(ent, opt)
 	entity_set_size(ent, vMins, vMaxs)
 }
 
-public _bm_create_block(bType, Float:vorigin[3], size[2])
+public _native_create_block(bType, Float:vorigin[3], size[2])
 {
 	new model[128], modelsize[16]
 	new Float:vMins[3], Float:vMaxs[3]
@@ -549,7 +561,7 @@ stock _bm_is_touched(ent, touchtype)
 	return (g_Blocks[bType][bTouch] & touchtype)
 }
 
-public _bm_is_on_block(id)
+public _bm_is_on_block(id, touched)
 {
 	new ent
 	new Float:pOrigin[3]
@@ -577,13 +589,13 @@ public _bm_is_on_block(id)
 		vBottom[1] = pOrigin[1] - g_Corners[1][i]
 
 		ent = trace_line(id, pOrigin, vBottom, vReturn)
-		if(_bm_is_block(ent) && _bm_is_touched(ent, TOUCH_FOOT | TOUCH_ALL | TOUCH_BOTH))
+		if(_bm_is_block(ent) && _bm_is_touched(ent, TOUCH_FOOT | TOUCH_ALL | TOUCH_BOTH) && (ent == touched))
 			return ent
 
 		vHead[0] = pOrigin[0] + g_Corners[0][i]
 		vHead[1] = pOrigin[1] - g_Corners[1][i]
 		ent = trace_line(id, pOrigin, vHead, vReturn)
-		if(_bm_is_block(ent) && _bm_is_touched(ent, TOUCH_HEAD | TOUCH_ALL | TOUCH_BOTH))
+		if(_bm_is_block(ent) && _bm_is_touched(ent, TOUCH_HEAD | TOUCH_ALL | TOUCH_BOTH) && (ent == touched))
 			return ent
 	}
 
@@ -592,7 +604,7 @@ public _bm_is_on_block(id)
 
 public _bm_snap(ent, Float:vOrigin[3])
 {
-	new Float:snapsize = 10.0
+	new Float:snapsize = 20.0
 	new Float:vReturn[3]
 	new Float:dist
 	new Float:olddist = 99999.9
@@ -709,7 +721,11 @@ public pfn_touch(touched, toucher)
 	if(!(g_Blocks[bType][bTouch] & (TOUCH_ALL | TOUCH_FOOT | TOUCH_HEAD | TOUCH_OTHER)))
 		return PLUGIN_CONTINUE
 
-	if(!(g_Blocks[bType][bTouch] & TOUCH_ALL) &&  (_bm_is_on_block(toucher) != touched))
+	new flags = entity_get_int(toucher, EV_INT_flags)
+	if(!(flags & FL_ONGROUND))
+		return PLUGIN_CONTINUE
+
+	if(!(g_Blocks[bType][bTouch] & TOUCH_ALL) && !_bm_is_on_block(toucher, touched))
 		return PLUGIN_CONTINUE
 
 	// To avoid cpu usage we can cache last touched block for same origin
@@ -768,6 +784,9 @@ public client_PreThink(id)
 		}
 	}
 
+	if(!is_user_alive(id))
+		return PLUGIN_CONTINUE
+
 	new ret, ret2
 	for(new i = 0; i <= g_Count; i++)
 	{
@@ -790,6 +809,9 @@ public client_PreThink(id)
 
 public client_PostThink(id)
 {
+	if(!is_user_alive(id))
+		return PLUGIN_CONTINUE
+
 	new ret, ret2
 	for(new i = 0; i <= g_Count; i++)
 	{

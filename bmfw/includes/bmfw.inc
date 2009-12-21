@@ -28,6 +28,24 @@ native _set_handler(const id, const blockid, const value, const Handlers:handler
 // Register block in framework
 native _reg_block(const name[], const ver[], const model[], const touch, const Float:cdown, const Float:size[], const Float:sizesmall[], const Float:sizelarge[])
 
+// Save blocks to file
+native _bm_save(const id)
+
+// Cleanup map and load maps from file
+native _bm_load()
+
+// Cleanup map
+native _bm_cleanup()
+
+// Rotate block by aiming
+native _bm_rotate_block(const ent, const opt)
+
+// Create block by aiming
+native _bm_create_block(const bType, const Float:vorigin[3], const size[2])
+
+// Get the block list
+native _bm_list_blocks()
+
 // Precache model in default directory
 stock bm_precache_model(const fmt[], any:...)
 {
