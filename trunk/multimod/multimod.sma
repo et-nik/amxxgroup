@@ -51,7 +51,9 @@ v2.2
 * Fixed votemod DoS
 * Fixed galileo plugin lookup problem
 * Fixed mapchooser_multimod plugin lookup problem
-* Fixed say nextmod problem
+* Fixed nextmod client command problem
+* Added currentmod client command
+* Added cvar to disallow votemod client command
 
 Credits:
 
@@ -93,6 +95,7 @@ new g_fileconf[LSTRING]
 new g_coloredmenus
 new g_modcount = -1			// integer with configured mods count
 new g_alreadyvoted
+new gp_allowedvote
 new g_nextmodid
 new g_currentmodid
 new g_multimod[SSTRING]
@@ -122,11 +125,14 @@ public plugin_init()
 	
 	gp_mode = register_cvar("amx_multimod_mode", "0")	// 0=auto ; 1=mapchooser ; 2=galileo
 	gp_mintime = register_cvar("amx_mintime", "10")
+	gp_allowedvote = register_cvar("amx_multimod_voteallowed", "0")
 
 	get_configsdir(g_confdir, charsmax(g_confdir))
 
 	register_clcmd("amx_votemod", "start_vote", ADMIN_MAP, "Vote for the next mod")
 	register_clcmd("say nextmod", "user_nextmod")
+	register_clcmd("say_team nextmod", "user_nextmod")
+	register_clcmd("say currentmod", "user_currentmod")
 	register_clcmd("say /votemod", "user_votemod")
 	register_clcmd("say_team /votemod", "user_votemod")
 
@@ -281,8 +287,17 @@ public user_nextmod(id)
 	return PLUGIN_HANDLED
 }
 
+public user_currentmod(id)
+{
+	client_print(0, print_chat, "%L", LANG_PLAYER, "MM_NEXTMOD", g_currentmod)
+	return PLUGIN_HANDLED
+}
+
 public user_votemod(id)
 {
+	if(gp_allowedvote)
+		return PLUGIN_HANDLED
+
 	if(g_alreadyvoted)
 	{
 		client_print(0, print_chat, "%L", LANG_PLAYER, "MM_VOTEMOD", g_modnames[g_nextmodid])
