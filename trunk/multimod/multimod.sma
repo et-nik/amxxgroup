@@ -122,6 +122,7 @@ public plugin_init()
 	register_cvar("MultiModManager", PLUGIN_VERSION, FCVAR_SERVER|FCVAR_SPONLY)
 	register_dictionary("mapchooser.txt")
 	register_dictionary("multimod.txt")
+
 	
 	gp_mode = register_cvar("amx_multimod_mode", "0")	// 0=auto ; 1=mapchooser ; 2=galileo
 	gp_mintime = register_cvar("amx_mintime", "10")
