@@ -346,5 +346,7 @@ public check_vote()
 	if(b != g_currentmodid)
 		set_multimod(b)
 
+	callfunc_begin("doVoteNextmap", "mapchooser_multimod.amxx");
+	callfunc_end();
 	g_nextmodid = b
 }

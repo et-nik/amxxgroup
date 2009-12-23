@@ -186,11 +186,17 @@ public voteNextmap()
 		return
 
 	g_selected = true
-	
+	doVoteNextmap()
+}
+
+public doVoteNextmap()
+{
 	new menu[512], a, mkeys = (1<<SELECTMAPS + 1)
 
 	new pos = format(menu, 511, g_coloredMenus ? "\y%L:\w^n^n" : "%L:^n^n", LANG_SERVER, "CHOOSE_NEXTM")
 	new dmax = (g_mapNums > SELECTMAPS) ? SELECTMAPS : g_mapNums
+	new winlimit = get_cvar_num("mp_winlimit")
+	new maxrounds = get_cvar_num("mp_maxrounds")
 	
 	for (g_mapVoteNum = 0; g_mapVoteNum < dmax; ++g_mapVoteNum)
 	{
