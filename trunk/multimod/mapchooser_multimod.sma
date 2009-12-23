@@ -184,6 +184,7 @@ public voteNextmap()
 
 	if (g_selected)
 		return
+	server_print("mapchooser votenextmap 2");
 
 	g_selected = true
 	
