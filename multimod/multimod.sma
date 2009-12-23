@@ -1,5 +1,14 @@
 /*
 
+--- multimod.ini ---
+[Gun Game]:[gungame-plugins.ini]:[gungame-config.cfg]
+[Paint Ball]:[paintball-plugins.ini]:[paintball-config.cfg]
+[Hid'N Seek]:[hns-plugins.ini]:[hns-config.cfg]
+[Death Run]:[deathrun-plugins.ini]:[deathrun-config.cfg]
+[Zombie Plague]:[zombieplague-plugins.ini]:[zombieplague-config.cfg]
+[Biohazard]:[biohazard-plugins.ini]:[biohazard-config.cfg]
+--------------------
+
 TODO
 * add some commands for admins
 
@@ -38,6 +47,11 @@ v2.1
 * Tested under czero
 * Fixed all issues with languaje change
 * Pending tests withing Galileo
+v2.2
+* Fixed votemod DoS
+* Fixed galileo plugin lookup problem
+* Fixed mapchooser_multimod plugin lookup problem
+* Fixed say nextmod problem
 
 Credits:
 
@@ -52,7 +66,7 @@ dark vador 008: Time and server for testing under czero
 
 #define PLUGIN_NAME	"MultiMod Manager"
 #define PLUGIN_AUTHOR	"JoRoPiTo"
-#define PLUGIN_VERSION	"2.1"
+#define PLUGIN_VERSION	"2.2"
 
 #define AMX_MULTIMOD	"amx_multimod"
 #define AMX_PLUGINS	"amxx_plugins"
@@ -112,7 +126,7 @@ public plugin_init()
 	get_configsdir(g_confdir, charsmax(g_confdir))
 
 	register_clcmd("amx_votemod", "start_vote", ADMIN_MAP, "Vote for the next mod")
-	register_clcmd("say nextmod", "user_votemod")
+	register_clcmd("say nextmod", "user_nextmod")
 	register_clcmd("say /votemod", "user_votemod")
 	register_clcmd("say_team /votemod", "user_votemod")
 
@@ -129,9 +143,9 @@ public plugin_cfg()
 
 	if(!get_pcvar_num(gp_mode))
 	{
-		if(is_plugin_loaded("mapchooser"))
+		if(find_plugin_byfile("mapchooser_multimod.amxx") != -1)
 			set_pcvar_num(gp_mode, 1)
-		else if(is_plugin_loaded("galileo"))
+		else if(find_plugin_byfile("galileo.amxx") != -1)
 			set_pcvar_num(gp_mode, 2)
 	}
 	get_localinfo(AMX_MULTIMOD, g_multimod, charsmax(g_multimod))
@@ -181,7 +195,7 @@ public load_cfg()
 			formatex(g_modnames[g_modcount], 32, "%s", szModName)
 			formatex(g_filemaps[g_modcount], 192, "%s/%s-maps.ini", AMX_BASECONFDIR, szTag)
 			formatex(g_fileplugins[g_modcount], 192, "%s/%s-plugins.ini", AMX_BASECONFDIR, szTag)
-			server_print("MOD Loaded: %s %s %s", g_modnames[g_modcount], g_filemaps[g_modcount], g_fileconf[g_modcount])
+			server_print("MOD Loaded: %s %s %s", g_modnames[g_modcount], g_filemaps[g_modcount], g_fileconf)
 		}
 	}
 	fclose(f)
@@ -238,6 +252,7 @@ public check_task()
 
 public start_vote()
 {
+	g_alreadyvoted = true
 	remove_task(TASK_VOTEMOD)
 	remove_task(TASK_CHVOMOD)
 
