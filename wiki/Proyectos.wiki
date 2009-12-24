@@ -17,6 +17,7 @@ Nuestros proyectos en curso
   * [spawnduplicator Automatic Spawn Point Duplicator]
   * [amxxaccouns AMXX User Accounts]
   * [multifastdl Multi FastDL]
+  * [npcaitool NPC AI Tools]
 
 = Gameplay =
   * [ultimatehero Ultimate Hero City]
