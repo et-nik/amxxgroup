@@ -23,5 +23,6 @@ Nuestros proyectos en curso
 
 = Gameplay =
   * [ultimatehero Ultimate Hero City]
+  * [bugs Bugs!]
   * [ghostsmod Ghosts]
   * [kidsmod Kids Mod]
