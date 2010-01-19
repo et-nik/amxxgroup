@@ -1,5 +1,19 @@
 /*
 
+Cvars:
+	dyndns_mode: 0 | 1 | 2 => 0=Custom Service - 1=DynDNS Service - 2=NO-IP Service
+	dyndns_hostname: xxx.dyndns.org => Hostname to update (use domain selected on service provider)
+	dyndns_username: User account name on selected service provider
+	dyndns_password: Password for username
+
+
+	Options for dyndns_mode = 0
+		dyndns_provider: Textual name of service provider (informational purpose)
+		dyndns_host: Host or IP Address of update gateway
+		dyndns_url: URL for custom updated service
+
+
+
 Credits
 	Black Rose (base64 code) --- http://forums.alliedmods.net/showpost.php?p=777210&postcount=4
 
@@ -112,14 +126,6 @@ stock encode64(const sString[], sResult[], len) {
 	}
 }
 
-
-/*
-GET /nic/update?hostname=amxx.dyndns.org&myip=1.1.1.1&wildcard=NOCHG&mx=NOCHG&backmx=NOCHG HTTP/1.0
-Host: members.dyndns.org
-Authorization: Basic cGllZ3RhczpzYXJhc2E=
-User-Agent: AMXX Group - Pawn - 1.0
-*/
-
 public update_request()
 {
 	new mode, provider[64], host[64], url[64], hostname[64]
@@ -149,20 +155,17 @@ public update_request()
 	if(0 < mode < sizeof(g_provider))
 	{
 		new error, socket
-		new request[256]
+		new request[512], request2[512]
 
 		socket = socket_open(host, 80, SOCKET_TCP, error)
 		if(socket > 0)
 		{
-			server_print("Update on %s: %s", provider, hostname)
+			server_print("Updating on %s for %s", provider, hostname)
 			formatex(request, charsmax(request), "GET %s%s HTTP/1.0^n", url, hostname)
-			socket_send(socket, request, charsmax(request))
-			formatex(request, charsmax(request), "Host: %s^n", host)
-			socket_send(socket, request, charsmax(request))
-			formatex(request, charsmax(request), "Authorization: Basic %s^n", encoded)
-			socket_send(socket, request, charsmax(request))
-			formatex(request, charsmax(request), "User-Agent: %s - %s - %s^n^n", PLUGIN_NAME, PLUGIN_AUTHOR, PLUGIN_VERSION)
-			socket_send(socket, request, charsmax(request))
+			formatex(request2, charsmax(request2), "%sHost: %s^n", request, host)
+			formatex(request, charsmax(request), "%sAuthorization: Basic %s^n", request2, encoded)
+			formatex(request2, charsmax(request2), "%sUser-Agent: %s - %s - %s^n^n", request, PLUGIN_NAME, PLUGIN_AUTHOR, PLUGIN_VERSION)
+			socket_send(socket, request2, charsmax(request2))
 		}
 	}
 }
