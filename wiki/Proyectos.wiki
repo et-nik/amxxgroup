@@ -1,25 +1,25 @@
 Nuestros proyectos en curso
 
 = Plugins =
-  * [multimod Multi Mod Manager]
+  * [multimod Multi Mod Manager] *done*
   * [fairplayrank Fair Play Rank]
   * [pushables Pushable Breakables]
   * [pushingpeople Pushing Peoples]
   * [expansivewave Expansive Wave for Grenades]
   * [realcorpse Real Corpses]
-  * [bmfw Block Maker Framework & Addons]
+  * [bmfw Block Maker Framework & Addons] *done*
   * [multic4 Multi C4 Manager]
-  * [closeyoureyes Close Your Eyes]
+  * [closeyoureyes Close Your Eyes] *done*
 
 = Utilities =
   * [svcstocks TEMPENTITY Stocks]
   * [edictshelper No Edicts Helper]
   * [spawnduplicator Automatic Spawn Point Duplicator]
   * [amxxaccouns AMXX User Accounts]
-  * [multifastdl Multi FastDL]
+  * [multifastdl Multi FastDL] *done*
   * [npcaitool NPC AI Tools]
   * [dnslib DNS Library]
-  * [dyndnscli DynDNS.com Client]
+  * [dyndnscli DynDNS.com Client] *done*
 
 = Gameplay =
   * [ultimatehero Ultimate Hero City]
