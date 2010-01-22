@@ -19,7 +19,7 @@ Nuestros proyectos en curso
   * [multifastdl Multi FastDL] *done* / *released*
   * [npcaitool NPC AI Tools]
   * [dnslib DNS Library]
-  * [dyndnscli DynDNS.com Client] *done* / *released*
+  * [dyndnscli DynDNS Client] *done* / *released*
 
 = Gameplay =
   * [ultimatehero Ultimate Hero City]
