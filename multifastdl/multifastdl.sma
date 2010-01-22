@@ -1,7 +1,7 @@
 #include <amxmodx>
 
 #define PLUGIN_NAME	"Multi FastDL"
-#define PLUGIN_VERSION	"1.0"
+#define PLUGIN_VERSION	"1.1"
 #define PLUGIN_AUTHOR	"JoRoPiTo"
 
 #define PLUGIN_CONFIG	"multifastdl.ini"
@@ -28,10 +28,8 @@ public plugin_init()
 
 		fgets(f, line, charsmax(line))
 		trim(line)
-		strcat(tmp, line, charsmax(tmp))
-		strtolower(tmp)
 
-		if(!equal(tmp, "http://")) continue
+		if(!equali(line, "http://", 7)) continue
 
 		copy(g_url[g_total], charsmax(g_url), line)
 		g_total++
@@ -44,5 +42,4 @@ public client_connect(id)
 {
 	g_last = (g_last < g_total) ? g_last + 1 : 0
 	set_pcvar_string(gp_downloadurl, g_url[g_last])
-	return PLUGIN_CONTINUE
 }
