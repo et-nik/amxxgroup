@@ -8,6 +8,30 @@
 
 *NPC Forwards*
 
+{{{
+/**
+ * Called at entity PreThink (engine)
+ *   use PLUGIN_* values as return
+ **/
+forward PygmalionPreThink(const iEnt)
+}}}
+
+{{{
+/**
+ * Called at entity PostThink (engine)
+ *   use PLUGIN_* values as return
+ **/
+forward PygmalionPostThink(const iEnt)
+}}}
+
+{{{
+/**
+ * Called at entity TakeDamage (hamsandwich)
+ *   use PLUGIN_* values as return
+ **/
+forward PygmalionTakeDamage(const iVictim, const iInflictor, const iAttacker, const Float:damage, const damage_type)
+}}}
+
 *NPC Utilities (natives)*
 
 {{{
