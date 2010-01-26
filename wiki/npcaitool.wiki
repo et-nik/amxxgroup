@@ -17,3 +17,67 @@
  **/
 native PygEnemiesInRadius(const iEnt, const iRadius, const bVisible)
 }}}
+
+{{{
+/**
+ * 
+ * 
+ **/
+native x()
+}}}
+
+{{{
+/**
+ * 
+ * 
+ **/
+native x()
+}}}
+
+{{{
+/**
+ * 
+ * 
+ **/
+native x()
+}}}
+
+{{{
+/**
+ * 
+ * 
+ **/
+native x()
+}}}
+
+{{{
+/**
+ * 
+ * 
+ **/
+native x()
+}}}
+
+{{{
+/**
+ * 
+ * 
+ **/
+native x()
+}}}
+
+{{{
+/**
+ * 
+ * 
+ **/
+native x()
+}}}
+
+{{{
+/**
+ * 
+ * 
+ **/
+native x()
+}}}
