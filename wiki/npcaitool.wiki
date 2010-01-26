@@ -27,6 +27,13 @@ native bool:PygInViewCone(const Float:vOrigin[3], const iEnt)
 
 {{{
 /**
+ * Returns true if vOrigin is visible from entity iEnt
+ **/
+native bool:PygVisible(const Float:vOrigin[3], const iEnt)
+}}}
+
+{{{
+/**
  * Returns best target enemy
  *   if bVisible is set, returns only enemies that are visible from entity
  **/
