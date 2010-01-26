@@ -13,25 +13,24 @@
 {{{
 /**
  * Returns amount of enemies in radius
- *   if bVisible is set, returns only the amount that are visible
+ *   if bVisible is set, returns only the amount that are visible from entity
  **/
-native PygEnemiesInRadius(const iEnt, const iRadius, const bVisible)
+native PygEnemiesInRadius(const iEnt, const iRadius, const bool:bVisible)
 }}}
 
 {{{
 /**
- * 
- * 
+ * Returns true if vOrigin is visible and in view cone of entity iEnt
  **/
-native x()
+native bool:PygInViewCone(const Float:vOrigin[3], const iEnt)
 }}}
 
 {{{
 /**
- * 
- * 
+ * Returns best target enemy
+ *   if bVisible is set, returns only enemies that are visible from entity
  **/
-native x()
+native PygFindEnemy(const iEnt, const bool:bVisible)
 }}}
 
 {{{
