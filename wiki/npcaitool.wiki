@@ -10,4 +10,10 @@
 
 *NPC Utilities (natives)*
 
-  sdfsdf
+{{{
+/**
+ * Returns amount of enemies in radius
+ *   if bVisible is set, returns only the amount that are visible
+ **/
+native PygEnemiesInRadius(const iEnt, const iRadius, const bVisible)
+}}}
