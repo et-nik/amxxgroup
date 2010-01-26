@@ -42,10 +42,10 @@ native PygFindEnemy(const iEnt, const bool:bVisible)
 
 {{{
 /**
- * 
- * 
+ * Returns nearest item
+ *   if szItem is set and contains a valid entity classname then search only for that kind of items
  **/
-native x()
+native PygFindItem(const iEnt, const szItem[])
 }}}
 
 {{{
