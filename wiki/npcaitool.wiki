@@ -43,17 +43,18 @@ native PygFindEnemy(const iEnt, const bool:bVisible)
 {{{
 /**
  * Returns nearest item
- *   if szItem is set and contains a valid entity classname then search only for that kind of items
+ *   returns only weapon_*, weaponbox, armoury
+ *   if szItem is set and contains a valid entity classname then search only for that kind of entity (override default item types)
  **/
 native PygFindItem(const iEnt, const szItem[])
 }}}
 
 {{{
 /**
- * 
- * 
+ * Returns leading objective based on entity's team and status
+ *   only search for default CS 1.6 objectives (hostages, bomb zone, etc)
  **/
-native x()
+native PygFindObjective(const iEnt)
 }}}
 
 {{{
