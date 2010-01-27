@@ -79,12 +79,12 @@ public speed_detected(id, Float:Speed, Float:MaxSpeed)
 		}
 		case 1:
 		{
-			server_cmd("amx_ban #%i %i ^"User banned for speedhack^"", userid, minutes)
+			server_cmd("amx_ban #%d %i ^"User banned for speedhack^"", userid, minutes)
 			client_print(0, print_chat, "Player %s banned for speedhack (%i minutes)", name, minutes)
 		}
 		default:
 		{
-			server_cmd("amx_banip #%i %i ^"User banned for speedhack^"", userid, minutes)
+			server_cmd("amx_banip #%d %i ^"User banned for speedhack^"", userid, minutes)
 			client_print(0, print_chat, "Player %s banned for speedhack (%i minutes)", name, minutes)
 		}
 	}
