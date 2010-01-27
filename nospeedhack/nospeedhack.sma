@@ -19,7 +19,7 @@ public plugin_init()
 	register_plugin(PLUGIN_NAME, PLUGIN_VERSION, PLUGIN_AUTHOR)
 	register_cvar("nospeedhack", PLUGIN_AUTHOR, FCVAR_SERVER|FCVAR_SPONLY)
 
-	gp_SpeedFactor = register_cvar("amx_speed_factor", "1.3")
+	gp_SpeedFactor = register_cvar("amx_speed_factor", "1.5")
 	gp_SpeedBanmode = register_cvar("amx_speed_banmode", "2")
 	gp_SpeedBantime = register_cvar("amx_speed_bantime", "15")
 	RegisterHam(Ham_Spawn, "player", "player_spawn", 1);
