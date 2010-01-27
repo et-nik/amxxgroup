@@ -1,8 +1,5 @@
 ==Some usefull references==
 
-{{{
 [http://forums.alliedmods.net/showthread.php?t=93229 Fakemeta&Ham Helper]
-}}}
-{{{
+
 [http://forums.alliedmods.net/showthread.php?t=54887 How-To Properly catch shot event in CS]
-}}}
