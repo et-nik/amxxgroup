@@ -10,6 +10,7 @@ Nuestros proyectos en curso
   * [bmfw Block Maker Framework & Addons] *done* / *released*
   * [multic4 Multi C4 Manager]
   * [closeyoureyes Close Your Eyes] *done* / *released*
+  * [nospeedhack No SpeedHack] *done*
 
 = Utilities =
   * [svcstocks TEMPENTITY Stocks]
