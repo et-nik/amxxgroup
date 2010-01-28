@@ -140,7 +140,7 @@ public player_attack(flags, id, eventid)
 	if(is_valid_ent(ent))
 	{
 		static Float:fNext
-		fNext = get_pdata_float(ent, m_flNextPrimaryAttack, 4) / get_pcvar_float(gp_SpeedShootFactor)
+		fNext = get_pdata_float(ent, m_flNextPrimaryAttack, 4) * get_pcvar_float(gp_SpeedShootFactor)
 		if((Aux - g_Attack[id]) < fNext)
 		{
 			speed_detected(id, "shooting", fNext, Aux - g_Attack[id])
