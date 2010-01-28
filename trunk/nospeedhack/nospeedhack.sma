@@ -4,7 +4,7 @@
 #include <fakemeta>
 
 #define PLUGIN_NAME	"No SpeedHack"
-#define PLUGIN_VERSION	"1.0"
+#define PLUGIN_VERSION	"1.4"
 #define PLUGIN_AUTHOR	"JoRoPiTo"
 
 #define	m_flNextPrimaryAttack	46
