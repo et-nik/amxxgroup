@@ -33,6 +33,7 @@ new gp_SpeedBanmode
 new gp_SpeedBantime
 new gp_SpeedBlock
 new gp_SpeedScore
+new gp_SpeedShootFactor
 
 public plugin_init()
 {
@@ -42,6 +43,7 @@ public plugin_init()
 	unregister_forward(FM_PrecacheEvent, g_ForwardPrecacheEvent, 1)
 	gp_SpeedScore = register_cvar("amx_speed_score", "3")      // How many times should be detected to get banned
 	gp_SpeedFactor = register_cvar("amx_speed_factor", "1.8")  // Maxspeed multiplier threshold to hack detection
+	gp_SpeedShootFactor = register_cvar("amx_speed_shootfactor", "0.8")  // Shoot delay multiplier threshold to hack detection
 	gp_SpeedBanmode = register_cvar("amx_speed_banmode", "0")  // Ban mode: 0=amx_banip / 1=amx_ban / 2=console log
 	gp_SpeedBantime = register_cvar("amx_speed_bantime", "15") // Time for ban
 	gp_SpeedBlock = register_cvar("amx_speed_block", "0")      // Block speedhack: 0=no block / 1=block
@@ -138,7 +140,7 @@ public player_attack(flags, id, eventid)
 	if(is_valid_ent(ent))
 	{
 		static Float:fNext
-		fNext = get_pdata_float(ent, m_flNextPrimaryAttack, 4) * get_pcvar_float(gp_SpeedFactor)
+		fNext = get_pdata_float(ent, m_flNextPrimaryAttack, 4) / get_pcvar_float(gp_SpeedShootFactor)
 		if((Aux - g_Attack[id]) < fNext)
 		{
 			speed_detected(id, "shooting", fNext, Aux - g_Attack[id])
