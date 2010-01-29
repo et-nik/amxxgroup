@@ -1,4 +1,4 @@
-Nuestros proyectos en curso
+Proyects list
 
 = Plugins =
   * [multimod Multi Mod Manager] *done* / *released*
