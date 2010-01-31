@@ -3,3 +3,5 @@
 [http://forums.alliedmods.net/showthread.php?t=93229 Fakemeta&Ham Helper]
 
 [http://forums.alliedmods.net/showthread.php?t=54887 How-To Properly catch shot event in CS]
+
+[http://forums.alliedmods.net/showthread.php?p=511741 Fakemeta Research]
