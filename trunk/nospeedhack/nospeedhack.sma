@@ -2,9 +2,10 @@
 #include <engine>
 #include <hamsandwich>
 #include <fakemeta>
+#include <cstrike>
 
 #define PLUGIN_NAME	"No SpeedHack"
-#define PLUGIN_VERSION	"1.4"
+#define PLUGIN_VERSION	"1.7"
 #define PLUGIN_AUTHOR	"JoRoPiTo"
 
 #define	m_flNextPrimaryAttack	46
@@ -141,6 +142,7 @@ public player_attack(flags, id, eventid)
 	{
 		static Float:fNext
 		fNext = get_pdata_float(ent, m_flNextPrimaryAttack, 4) * get_pcvar_float(gp_SpeedShootFactor)
+		if((weap && (CSW_GLOCK18|CSW_FAMAS)) && cs_get_weapon_burst(ent)) fNext *= 0.003
 		if((Aux - g_Attack[id]) < fNext)
 		{
 			speed_detected(id, "shooting", fNext, Aux - g_Attack[id])
