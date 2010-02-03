@@ -24,6 +24,7 @@ new Float:g_Attack[33]
 new Float:g_Start[33][3]
 new Float:g_End[33][3]
 new Float:g_Last[33]
+new Float:g_LastDetect[33]
 new g_Score[33]
 new g_ForwardPrecacheEvent
 new g_EventIds
@@ -35,6 +36,7 @@ new gp_SpeedBantime
 new gp_SpeedBlock
 new gp_SpeedScore
 new gp_SpeedShootFactor
+new gp_SpeedStep
 
 public plugin_init()
 {
@@ -48,6 +50,7 @@ public plugin_init()
 	gp_SpeedBanmode = register_cvar("amx_speed_banmode", "0")  // Ban mode: 0=amx_banip / 1=amx_ban / 2=console log
 	gp_SpeedBantime = register_cvar("amx_speed_bantime", "15") // Time for ban
 	gp_SpeedBlock = register_cvar("amx_speed_block", "0")      // Block speedhack: 0=no block / 1=block
+	gp_SpeedStep = register_cvar("amx_speed_step", "2.5")      // Skip detection interval in seconds (not for shooting)
 
 	RegisterHam(Ham_Spawn, "player", "player_spawn", 1)
 	register_forward(FM_PlaybackEvent, "player_attack")
@@ -63,6 +66,7 @@ public plugin_precache()
 public client_putinserver(id)
 {
 	g_Score[id] = 0
+	g_LastDetect[id] = halflife_time()
 }
 
 public event_precache(type, const name[])
@@ -81,8 +85,7 @@ public event_precache(type, const name[])
 public player_spawn(id)
 {
 	entity_get_vector(id, EV_VEC_origin, g_Start[id])
-	g_Last[id] = halflife_time()
-	g_Attack[id] = halflife_time()
+	g_Last[id] = g_Attack[id] = halflife_time()
 	return HAM_IGNORED
 }
 
@@ -109,7 +112,7 @@ public client_PostThink(id)
 	Distance = get_distance_f(g_Start[id], g_End[id])
 	Speed = Distance / (Aux - g_Last[id])
 
-	if((MaxSpeed > 150.0) && (Distance > 150.0) && (FallSpeed == 0) && (BaseSpeed == 0) && (Speed > MaxSpeed))
+	if((g_LastDetect[id] < (Aux + get_pcvar_float(gp_SpeedStep))) && (MaxSpeed > 150.0) && (Distance > 150.0) && (FallSpeed == 0) && (BaseSpeed == 0) && (Speed > MaxSpeed))
 	{
 		speed_detected(id, "running", Speed, MaxSpeed)
 		g_Last[id] = Aux
