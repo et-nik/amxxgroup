@@ -1,7 +1,7 @@
 #include <amxmodx>
 
 #define PLUGIN_NAME	"Multi FastDL"
-#define PLUGIN_VERSION	"1.1"
+#define PLUGIN_VERSION	"1.2"
 #define PLUGIN_AUTHOR	"JoRoPiTo"
 
 #define PLUGIN_CONFIG	"multifastdl.ini"
