@@ -31,7 +31,7 @@ public plugin_init()
 
 		if(!equali(line, "http://", 7)) continue
 
-		copy(g_url[g_total], charsmax(g_url), line)
+		copy(g_url[g_total], 127, line)
 		g_total++
 	}
 	g_total--
