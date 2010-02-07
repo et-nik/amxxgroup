@@ -9,3 +9,9 @@
 [http://forums.alliedmods.net/showthread.php?p=681712 Entity Tools]
 
 [http://xpaw.crannk.de/pev_research.php PEV Research]
+
+==Other links==
+
+[http://www.csload.com/cs_1.6_personal_file_dump Old HL1 Resource Files]
+
+[http://hlci.thewavelength.net/ Half-Life Coding]
