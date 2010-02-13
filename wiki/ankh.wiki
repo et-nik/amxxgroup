@@ -6,26 +6,26 @@ What is a must?
 
 *Functionalities*
 {{{
-  * Heal/Armor
-  * Gag
-  * Awesome slap
-  * Give weapon*
-  * Give money
-  * Disarm
-  * Team transfer
-  * Team swap
+  Heal/Armor
+  Gag
+  Awesome slap
+  Give weapon*
+  Give money
+  Disarm
+  Team transfer
+  Team swap
 }}}
 
 *Habilities for players*
 {{{
-  * Godmode
-  * Speed
-  * Semiclip
-  * Noclip
+  Godmode
+  Speed
+  Semiclip
+  Noclip
 }}}
 
 *Automatic actions*
 {{{
-  * Anti spam
-  * No retry
+  Anti spam
+  No retry
 }}}
