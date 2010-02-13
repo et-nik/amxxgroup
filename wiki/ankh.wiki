@@ -3,7 +3,29 @@ Description:
   This plugin will intend to be the best all in one for admins.
 
 What is a must?
+
+*Functionalities*
 {{{
-  * Gag players
-  *
+  * Heal/Armor
+  * Gag
+  * Awesome slap
+  * Give weapon*
+  * Give money
+  * Disarm
+  * Team transfer
+  * Team swap
+}}}
+
+*Habilities for players*
+{{{
+  * Godmode
+  * Speed
+  * Semiclip
+  * Noclip
+}}}
+
+*Automatic actions*
+{{{
+  * Anti spam
+  * No retry
 }}}
