@@ -1,0 +1,16 @@
+*Description:*
+  This plugin will manage JailBreak gameplay.
+
+*Gameplay:*
+  The rules are simple:
+    * CT's are guards / TT's are prisoners.
+    * CT's must have microphone to give orders to TT's.
+    * TT's must obey what CT's says.
+    * At round start, some players are choosen to be CT's.
+    * Every 6 players, one of them will be CT. The others will be TT.
+
+Cvars:
+{{{
+  jbe_freekill_punish: 0 (no punishment) / 1 (freeday for victim) / 2 (imprison killer) / 3 (random)
+  jbe_freeday: seconds to open gate until assume it's freeday / 0 (disable auto freeday)
+}}}
