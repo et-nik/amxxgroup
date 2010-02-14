@@ -36,6 +36,14 @@ forward PygmalionTakeDamage(const iVictim, const iInflictor, const iAttacker, co
 
 {{{
 /**
+ * Register a new NPC Class and setup AI Manager
+ *   if bVisible is set, returns only the amount that are visible from entity
+ **/
+native PygClassRegister(const sName, const iForwards)
+}}}
+
+{{{
+/**
  * Returns amount of enemies in radius
  *   if bVisible is set, returns only the amount that are visible from entity
  **/
