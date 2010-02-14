@@ -1,0 +1,108 @@
+<html>
+<body>
+<pre>
+<h1>Build Log</h1>
+<h3>
+--------------------Configuration: monster_mm - Win32 Debug--------------------
+</h3>
+<h3>Command Lines</h3>
+Creating temporary file "C:\DOCUME~1\whc\LOCALS~1\Temp\RSPE7.tmp" with contents
+[
+/nologo /MTd /W3 /Gm /GX /ZI /Od /I "..\dlls" /I "..\common" /I "..\engine" /I "..\pm_shared" /I "..\..\metamod" /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /D "_MBCS" /D "_USRDLL" /D "monster_mm_EXPORTS" /D strcasecmp=stricmp /D strncasecmp=_strnicmp /FR"Debug/" /Fo"Debug/" /Fd"Debug/" /FD /GZ /c 
+"C:\Documents and Settings\whc\орн▒\mp test\dlls\ichthyosaur.cpp"
+]
+Creating command line "cl.exe @C:\DOCUME~1\whc\LOCALS~1\Temp\RSPE7.tmp" 
+Creating temporary file "C:\DOCUME~1\whc\LOCALS~1\Temp\RSPE8.tmp" with contents
+[
+kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /dll /incremental:yes /pdb:"Debug/monster_mm.pdb" /debug /machine:I386 /def:".\monster_mm.def" /out:"Debug/monster_mm.dll" /implib:"Debug/monster_mm.lib" /pdbtype:sept 
+".\Debug\agrunt.obj"
+".\Debug\AI_BaseNPC_Schedule.obj"
+".\Debug\animating.obj"
+".\Debug\animation.obj"
+".\Debug\apache.obj"
+".\Debug\barnacle.obj"
+".\Debug\barney.obj"
+".\Debug\bigmomma.obj"
+".\Debug\bloater.obj"
+".\Debug\bullsquid.obj"
+".\Debug\cmbase.obj"
+".\Debug\combat.obj"
+".\Debug\controller.obj"
+".\Debug\defaultai.obj"
+".\Debug\dllapi.obj"
+".\Debug\effects.obj"
+".\Debug\flyingmonster.obj"
+".\Debug\gargantua.obj"
+".\Debug\ggrenade.obj"
+".\Debug\gman.obj"
+".\Debug\h_ai.obj"
+".\Debug\h_export.obj"
+".\Debug\hassassin.obj"
+".\Debug\headcrab.obj"
+".\Debug\hgrunt.obj"
+".\Debug\hornet.obj"
+".\Debug\houndeye.obj"
+".\Debug\ichthyosaur.obj"
+".\Debug\islave.obj"
+".\Debug\leech.obj"
+".\Debug\monster_api.obj"
+".\Debug\monster_config.obj"
+".\Debug\monsters.obj"
+".\Debug\monsterstate.obj"
+".\Debug\nodes.obj"
+".\Debug\scientist.obj"
+".\Debug\skill.obj"
+".\Debug\sound.obj"
+".\Debug\squeakgrenade.obj"
+".\Debug\subs.obj"
+".\Debug\talkmonster.obj"
+".\Debug\tentacle.obj"
+".\Debug\util.obj"
+".\Debug\weapons.obj"
+".\Debug\zombie.obj"
+]
+Creating command line "link.exe @C:\DOCUME~1\whc\LOCALS~1\Temp\RSPE8.tmp"
+Creating temporary file "C:\DOCUME~1\whc\LOCALS~1\Temp\RSPE9.bat" with contents
+[
+@echo off
+copy .\Debug\monster_mm.dll D:\Half-Life\valve\dlls
+copy .\Debug\monster_mm.dll D:\Half-Life\tfc\dlls
+copy .\Debug\monster_mm.dll D:\Half-Life\cstrike\dlls
+copy .\Debug\monster_mm.dll D:\Half-Life\dmc\dlls
+copy .\Debug\monster_mm.dll D:\Half-Life\dod\dlls
+copy .\Debug\monster_mm.dll D:\Half-Life\firearms\dlls
+copy .\Debug\monster_mm.dll D:\Half-Life\frontline\dlls
+copy .\Debug\monster_mm.dll D:\Half-Life\gearbox\dlls
+]
+Creating command line "C:\DOCUME~1\whc\LOCALS~1\Temp\RSPE9.bat"
+Compiling...
+ichthyosaur.cpp
+Linking...
+   Creating library Debug/monster_mm.lib and object Debug/monster_mm.exp
+<h3>Output Window</h3>
+Copying to DLL folder
+The system cannot find the path specified.
+        0 file(s) copied.
+The system cannot find the path specified.
+        0 file(s) copied.
+The system cannot find the path specified.
+        0 file(s) copied.
+The system cannot find the path specified.
+        0 file(s) copied.
+The system cannot find the path specified.
+        0 file(s) copied.
+The system cannot find the path specified.
+        0 file(s) copied.
+The system cannot find the path specified.
+        0 file(s) copied.
+The system cannot find the path specified.
+        0 file(s) copied.
+Error executing c:\windows\system32\cmd.exe.
+
+
+
+<h3>Results</h3>
+monster_mm.dll - 1 error(s), 0 warning(s)
+</pre>
+</body>
+</html>
