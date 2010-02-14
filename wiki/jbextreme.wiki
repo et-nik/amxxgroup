@@ -1,4 +1,5 @@
-
+*Description:*
+  This plugin will manage JailBreak gameplay.
 
 *Gameplay:*
   The rules are simple:
