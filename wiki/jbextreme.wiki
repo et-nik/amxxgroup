@@ -11,6 +11,17 @@
 
 *Cvars:*
 {{{
+  jbe_maxct: max amount of CT players
   jbe_freekill_punish: 0 (no punishment) / 1 (freeday for victim) / 2 (imprison killer) / 3 (random)
   jbe_freeday: seconds to open gate until assume it's freeday / 0 (disable auto freeday)
+  jbe_crowbar: amount of random crowbar to give for TT's
+  jbe_skills: 0 (disabled) / 1 (enabled)
+}}}
+
+*Features:*
+{{{
+  * Random prisoner skills at join (drug dealer, brawny, athlete, junknie)
+  * Random crowbar for TT's
+  * Freekill detection and punishment
+  * Freeday management
 }}}
