@@ -6,6 +6,26 @@
 
 *NPC Natives*
 
+{{{
+/**
+ * Register a new NPC Class and setup AI Manager
+ *   sName must be a registered class name
+ *   iForward is a bitmask of enabled forwards
+ **/
+native PygClassRegister(const sName[], const iForwards)
+}}}
+
+{{{
+/**
+ * Create respawnable entity
+ *   sName must be a registered class name
+ *   iTeam is the team that this entity belongs
+ *   iSpawnFlags it's how this entity will spawn/respawn
+ *   fOrigin is where this entity will spawn
+ **/
+native PygClassSpawn(const sName[], const iTeam, const iSpawnFlags, const Float:fOrigin[3])
+}}}
+
 *NPC Forwards*
 
 {{{
@@ -33,14 +53,6 @@ forward PygmalionTakeDamage(const iVictim, const iInflictor, const iAttacker, co
 }}}
 
 *NPC Utilities (natives)*
-
-{{{
-/**
- * Register a new NPC Class and setup AI Manager
- *   if bVisible is set, returns only the amount that are visible from entity
- **/
-native PygClassRegister(const sName, const iForwards)
-}}}
 
 {{{
 /**
