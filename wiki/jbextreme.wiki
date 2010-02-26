@@ -20,7 +20,13 @@
 
 *Features:*
 {{{
-  * Random prisoner skills at join (drug dealer, brawny, athlete, junknie)
+  * Auto team join *done*
+  * Auto CT limit *done*
+  * Simon selection
+  * Microphone control
+  * Radio control
+  * Custom models *done*
+  * Random prisoner skills at join (drug dealer, brawny, athlete, junknie) *done*
   * Random crowbar for TT's
   * Freekill detection and punishment
   * Freeday management
