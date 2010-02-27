@@ -7,11 +7,14 @@
 
 #define	PLUGIN_NAME	"JailBreak Extreme"
 #define	PLUGIN_AUTHOR	"JoRoPiTo"
-#define	PLUGIN_VERSION	"0.1"
+#define	PLUGIN_VERSION	"0.3"
 #define	PLUGIN_CVAR	"jbextreme"
 
 #define TASK_JOIN	2487000
-#define TASK_HUD	2487100
+#define TASK_SPAWN	2487100
+#define TASK_HUD	2487200
+
+#define DEBUG		1
 
 // Offsets
 #define m_iPrimaryWeapon	116
@@ -53,14 +56,14 @@ public plugin_init()
 	register_plugin(PLUGIN_NAME, PLUGIN_VERSION, PLUGIN_AUTHOR)
 	register_cvar(PLUGIN_CVAR, PLUGIN_VERSION, FCVAR_SERVER|FCVAR_SPONLY)
 
-	register_message(get_user_msgid("ShowMenu"), "msg_TeamChoice")
-	register_message(get_user_msgid("VGUIMenu"), "msg_TeamChoice")
-	register_message(get_user_msgid("MOTD"), "msg_MOTD")
+	register_message(get_user_msgid("ShowMenu"), "msg_teamchoice")
+	register_message(get_user_msgid("VGUIMenu"), "msg_teamchoice")
+	register_message(get_user_msgid("MOTD"), "msg_motd")
 
 	register_event("CurWeapon", "current_weapon", "be", "1=1", "2=29")
-	register_event("TeamInfo", "team_info", "a", "2=TERRORIST", "2=CT")
 	register_logevent("round_end", 2, "1=Round_End")
 	register_logevent("round_end", 2, "0=World triggered", "1&Restart_Round_")
+	register_logevent("round_end", 2, "0=World triggered", "1=Game_Commencing")
 	register_logevent("round_start", 2, "0=World triggered", "1=Round_Start")
 
 	register_forward(FM_SetClientKeyValue, "set_client_kv")
@@ -71,6 +74,7 @@ public plugin_init()
 	RegisterHam(Ham_Killed, "player", "player_killed", 1)
 	RegisterHam(Ham_TakeDamage, "player", "player_damage")
 
+	register_clcmd("say /info", "simon_info")
 	register_clcmd("say /simon", "simon_say")
 	register_clcmd("say /nomic", "simon_nomic")
 	register_clcmd("+simonvoice", "voicerecord_on")
@@ -129,18 +133,25 @@ public precache_spawn(iEnt)
 
 public client_putinserver(iPlayer)
 {
+	g_Player[iPlayer][Alive] = 0
+	g_Player[iPlayer][Team] = 0
+	g_Player[iPlayer][Role] = 0
+	g_Player[iPlayer][JailTime] = 0
+	g_Player[iPlayer][DaysLeft] = 0
+	g_Player[iPlayer][Pursued] = 0
 	client_cmd(iPlayer, "hud_centerid 0")
 }
 
 public client_disconnect(iPlayer)
 {
+	_debug("Player disconnected %i %i %i", iPlayer, g_Player[iPlayer][Team], g_Player[iPlayer][Alive])
 	if(g_Player[iPlayer][Team] == _:CS_TEAM_CT)
 		g_CtCount = g_CtCount > 0 ? g_CtCount - 1 : 0
 	else
 		g_TtCount = g_TtCount > 0 ? g_TtCount - 1 : 0
 
 	if(g_Player[iPlayer][Alive] && (g_Player[iPlayer][Team] == _:CS_TEAM_T))
-		g_TtAlive = g_TtAlive > 0 ? g_TtAlive-- : g_TtAlive
+		g_TtAlive = g_TtAlive > 0 ? g_TtAlive-- : 0
 
 	g_Player[iPlayer][Alive] = 0
 	g_Player[iPlayer][Team] = 0
@@ -161,12 +172,12 @@ public client_disconnect(iPlayer)
 // Messages & Forwards
 ///////////////////////////////////////////////////////////////////////////////////////
 
-public msg_MOTD(iMsgid, iDest, iPlayer)
+public msg_motd(iMsgid, iDest, iPlayer)
 {
 	return PLUGIN_HANDLED
 }
 
-public msg_TeamChoice(iMsgid, iDest, iPlayer)
+public msg_teamchoice(iMsgid, iDest, iPlayer)
 {
 	static iMsgArg
 	iMsgArg = get_msg_arg_int(1)
@@ -174,28 +185,12 @@ public msg_TeamChoice(iMsgid, iDest, iPlayer)
 	if(g_Player[iPlayer][Team] != 0)
 		return PLUGIN_HANDLED
 
-	switch(iMsgArg)
+	if(((iMsgid == 114) && (iMsgArg == 2)) || ((iMsgid == 96) && (iMsgArg == 51)))
 	{
-		case 51:
-		{
-			set_task(1.0, "task_jointeam", TASK_JOIN + iPlayer)
-			return PLUGIN_HANDLED
-		}
-		case 31, 531:
-		{
-			return PLUGIN_HANDLED
-		}
-		case 2:
-		{
-			set_task(1.0, "task_jointeam", TASK_JOIN + iPlayer)
-			return PLUGIN_HANDLED
-		}
-		case 27:
-		{
-			return PLUGIN_HANDLED
-		}
+		set_task(1.0, "task_jointeam", TASK_JOIN + iPlayer)
 	}
-	return PLUGIN_CONTINUE
+
+	return PLUGIN_HANDLED
 }
 
 public set_client_kv(iPlayer, const info[], const key[])
@@ -270,35 +265,10 @@ public current_weapon(iPlayer)
 	}
 }
 
-public team_info()
-{
-	static iPlayer, iTeam, szTeam[32]
-
-	iPlayer = read_data(1)
-	read_data(2, szTeam, charsmax(szTeam))
-	iTeam = (szTeam[0] == 'T') ? _:CS_TEAM_T : _:CS_TEAM_CT
-
-	if(g_Player[iPlayer][Team] != iTeam)
-	{
-		g_Player[iPlayer][Team] = iTeam
-		switch(iTeam)
-		{
-			case(_:CS_TEAM_T):
-			{
-				g_TtCount++
-			}
-			case(_:CS_TEAM_CT):
-			{
-				g_CtCount++
-			}
-		}
-	}
-}
-
 public round_end()
 {
 	remove_task(TASK_HUD)
-	g_CtCount = g_TtCount = g_TtAlive = 0
+	g_TtAlive = 0
 	g_LastSimon = g_Simon
 	g_Simon = 0
 	g_SimonTalking = 0
@@ -331,7 +301,6 @@ public player_spawn(iPlayer)
 	{
 		case(_:CS_TEAM_T):
 		{
-			g_TtCount++
 			g_TtAlive++
 			set_user_info(iPlayer, "model", "wiezien")
 			set_hudmessage(255, 0, 0, -1.0, -1.0, 0, 0.0, 10.0, 0.0, 0.0, -1)
@@ -340,7 +309,6 @@ public player_spawn(iPlayer)
 		}
 		case(_:CS_TEAM_CT):
 		{
-			g_CtCount++
 			set_user_info(iPlayer, "model", "straznik")
 		}
 	}
@@ -349,14 +317,11 @@ public player_spawn(iPlayer)
 
 public player_killed(iPlayer)
 {
+	_debug("Player killed %i %i", iPlayer, g_Player[iPlayer][Team])
 	g_Player[iPlayer][Alive] = 0
-	switch(g_Player[iPlayer][Team])
-	{
-		case(_:CS_TEAM_T):
-		{
-			g_TtAlive = g_TtAlive > 0 ? g_TtAlive-- : g_TtAlive
-		}
-	}
+	if(g_Player[iPlayer][Team] == _:CS_TEAM_T)
+		g_TtAlive = g_TtAlive > 0 ? g_TtAlive-- : 0
+
 	return HAM_IGNORED
 }
 
@@ -371,6 +336,12 @@ public player_damage(iVictim, iEnt, iAttacker, Float:fDamage, iDamageBits)
 		
 	}
 	return HAM_IGNORED
+}
+
+public simon_info(iPlayer)
+{
+	_debug("CtCount:%i TtCount:%i TtAlive:%i", g_CtCount, g_TtCount, g_TtAlive)
+	return PLUGIN_HANDLED
 }
 
 public simon_say(iPlayer)
@@ -417,36 +388,86 @@ public block_command(iPlayer)
 	return PLUGIN_HANDLED
 }
 
-
 ///////////////////////////////////////////////////////////////////////////////////////
 // Internal Functions
 ///////////////////////////////////////////////////////////////////////////////////////
+stock _debug(const szFormat[], any:...)
+{
+#if defined DEBUG
+	static szText[4096]
+	vformat(szText, charsmax(szText), szFormat, 2)
+	server_print("#DEBUG: %s", szText)
+#endif
+}
 
 stock balance_teams()
 {
-	static iPlayer
-	for(iPlayer = 1; iPlayer < g_MaxClients; iPlayer++)
+	static iPlayer, iLimit
+
+	iLimit = 1
+	while(need_balance())
 	{
-		if((g_CtCount < 1 || team_balance()) && (iPlayer =  random_num(1,g_MaxClients)) && (g_Player[iPlayer][Team] == _:CS_TEAM_T))
+		iLimit++
+		iPlayer = random_num(1, g_MaxClients)
+		if(is_user_connected(iPlayer) && (g_Player[iPlayer][Team] != _:CS_TEAM_CT))
 		{
-			server_print("player team %i %i", iPlayer, g_Player[iPlayer][Team])
-			g_Player[iPlayer][Team] = _:CS_TEAM_CT
-			g_CtCount++
-			g_TtCount--
-			cs_set_user_team(iPlayer, CS_TEAM_CT)
+			_debug("Need balance - Team switch %i CT (%i:%i)", iPlayer, g_CtCount, g_TtCount)
+			_set_user_team(iPlayer, _:CS_TEAM_CT)
+			user_silentkill(iPlayer)
+		}
+		if(iLimit > g_MaxClients) break
+	}
+
+	for(iPlayer = 1; iPlayer <= g_MaxClients; iPlayer++)
+	{
+		if(!is_user_connected(iPlayer))
+			continue
+
+		if(g_Player[iPlayer][Team] == _:CS_TEAM_SPECTATOR)
+		{
+			_debug("Team switch %i T (Previous %i) (%i:%i)", iPlayer, g_Player[iPlayer][Team], g_CtCount, g_TtCount)
+			_set_user_team(iPlayer, _:CS_TEAM_T)
 			user_silentkill(iPlayer)
 		}
 	}
 }
 
-stock team_balance()
+stock need_balance()
 {
-	return g_CtCount < (g_TtCount / get_pcvar_num(gp_CtRatio))
+	return (g_CtCount < 1) || (g_CtCount < (g_TtCount / get_pcvar_num(gp_CtRatio)))
 }
 
 stock check_team(iTeam)
 {
-	return (g_CtCount < 1) || ((iTeam == _:CS_TEAM_CT) && team_balance())
+	return (g_CtCount < 1) || ((iTeam == _:CS_TEAM_CT) && need_balance())
+}
+
+stock _set_user_team(iPlayer, iTeam)
+{
+	if(g_Player[iPlayer][Team] == _:CS_TEAM_T)
+		g_TtCount--
+
+	g_Player[iPlayer][Team] = iTeam
+	_debug("Set user team: %i %i", iPlayer, iTeam)
+	switch(iTeam)
+	{
+		case(_:CS_TEAM_CT):
+		{
+			g_CtCount++
+			engclient_cmd(iPlayer, "jointeam", "2")
+			engclient_cmd(iPlayer, "joinclass", "5")
+		}
+		case(_:CS_TEAM_T):
+		{
+			g_TtCount++
+			engclient_cmd(iPlayer, "jointeam", "1")
+			engclient_cmd(iPlayer, "joinclass", "5")
+		}
+		default:
+		{
+			engclient_cmd(iPlayer, "jointeam", "3")
+		}
+	}
 }
 
 public hud_update()
@@ -462,40 +483,19 @@ public hud_update()
 
 public task_jointeam(iTaskId)
 {
-	static iTeam
 	new iPlayer = iTaskId - TASK_JOIN
-
-	iTeam = random_num(1,2)
-	if(check_team(iTeam))
-	{
-		g_CtCount++
-		g_Player[iPlayer][Team] = _:CS_TEAM_CT
-	}
-	else
-	{
-		g_TtCount++
-		g_Player[iPlayer][Team] = _:CS_TEAM_T
-		g_Player[iPlayer][JailTime] = random_num(1,get_pcvar_num(gp_MaxDays))
-		g_Player[iPlayer][DaysLeft] = g_Player[iPlayer][JailTime]
-		g_Player[iPlayer][Role] = random(sizeof(_Roles))
-		g_Player[iPlayer][Pursued] = 0
-	}
-	hud_update()
-	
-	switch(g_Player[iPlayer][Team])
-	{
-		case(_:CS_TEAM_CT):
-		{
-			engclient_cmd(iPlayer, "jointeam", "2")
-			engclient_cmd(iPlayer, "joinclass", "5")
-		}
-		case(_:CS_TEAM_T):
-		{
-			engclient_cmd(iPlayer, "jointeam", "1")
-			engclient_cmd(iPlayer, "joinclass", "5")
-		}
-	}
+	_set_user_team(iPlayer, _:CS_TEAM_SPECTATOR)
+	g_Player[iPlayer][Team] = _:CS_TEAM_SPECTATOR
+	if(!task_exists(TASK_SPAWN))
+		set_task(5.0, "task_spawn", TASK_SPAWN)
 }
+
+public task_spawn(iTaskId)
+{
+	if((g_TtAlive < 1) || (g_CtCount < 1))
+		server_cmd("sv_restartround 1")
+}
+
 
 public simon_select(iPlayer)
 {
