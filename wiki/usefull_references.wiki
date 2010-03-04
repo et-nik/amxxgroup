@@ -15,3 +15,7 @@
 [http://www.csload.com/cs_1.6_personal_file_dump Old HL1 Resource Files]
 
 [http://hlci.thewavelength.net/ Half-Life Coding]
+
+[http://www.slipgate.de/hltv/hltv_FAQ_coders.html HLTV Coder]
+
+[http://www.fabiensanglard.net/quakeSource/index.php Quake Engine]
