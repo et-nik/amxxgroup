@@ -7,10 +7,9 @@
  
 #define	PLUGIN_NAME	"JailBreak Extreme"
 #define	PLUGIN_AUTHOR	"JoRoPiTo"
-#define	PLUGIN_VERSION	"1.0"
+#define	PLUGIN_VERSION	"1.1"
 #define	PLUGIN_CVAR	"jbextreme"
 
-#define DEBUG		1
 #define TASK_STATUS	2487000
 
 #define get_bit(%1,%2) 		( %1 &   1 << ( %2 & 31 ) )
@@ -19,7 +18,6 @@
 
 // Offsets
 #define m_iPrimaryWeapon	116
-#define m_iTeam			114
 #define m_iVGUI			510
  
 enum _hud { _hudsync, Float:_x, Float:_y, Float:_time }
@@ -31,6 +29,8 @@ new gp_TeamRatio
 new gp_CtMax
 new gp_MaxDays
 new gp_BoxMax
+new gp_TalkMode
+new gp_RetryTime
 
 new g_MaxClients
 new g_MsgStatusIcon
@@ -51,27 +51,28 @@ new const _RemoveEntities[][] = {
 // Reasons
 new const g_Reasons[][] =  { "", "robbery", "kidnapping", "hijacking", "murder", "battery", "prostitution" }
 
-// HudSync: 0=status / 1=messages / 2=skills / 3=alerts
-new const g_HudSync[][_hud] = { { 0,  0.0,  0.6,  2.0 }, { 0, -1.0, 0.7,  5.0 }, { 0,  0.3, 0.2, 10.0 }, { 0, -1.0, 0.3, 10.0 } }
+// HudSync: 0=status / 1=messages / 2=skills / 3=alerts / 4=info
+new const g_HudSync[][_hud] = { {0,  0.1,  0.3,  2.0}, {0, -1.0, 0.7,  5.0}, {0,  0.1, 0.2, 10.0}, {0, 0.2, 0.3, 10.0}, {0, -1.0, 0.9, 3.0} }
 
 // UNASSIGNED / T / CT / SPECTATOR
-new const g_TeamColors[CsTeams][3] = { { 0, 0, 0 }, { 255, 0, 0 }, { 0, 0, 255 }, { 0, 0, 0 } }
+//new const g_TeamColors[CsTeams][3] = { {0, 0, 0}, {255, 0, 0}, {0, 0, 255}, {0, 0, 0} }
 
 // Status
 new const g_ModeStatus[][] = { "disabled", "enabled" }
 
 new g_PlayerDaysleft[33]
+new g_PlayerReason[33]
 new g_PlayerNomic
 new g_PlayerWanted
 new g_PlayerCrowbar
-new g_PlayerReason[33]
+new g_PlayerRevolt
 new g_TeamCount[CsTeams]
 new g_TeamAlive[CsTeams]
-new g_RevoltStarted
 new g_BoxStarted
 new g_CrowbarCount
 new g_Simon
 new g_SimonTalking
+new g_RoundStarted
  
 public plugin_init()
 {
@@ -127,6 +128,8 @@ public plugin_init()
 	gp_MaxDays = register_cvar("jbe_maxdays", "15")
 	gp_CtMax = register_cvar("jbe_maxct", "7")
 	gp_BoxMax = register_cvar("jbe_boxmax", "6")
+	gp_RetryTime = register_cvar("jbe_retrytime", "10")
+	gp_TalkMode = register_cvar("jbe_talkmode", "2")	// 0-alltak / 1-tt
  
 	g_MaxClients = get_global_int(GL_maxClients)
  
@@ -271,7 +274,7 @@ public player_status(id)
 
 			health = get_user_health(player)
 			get_user_name(player, name, charsmax(name))
-			player_hudmessage(id, 1, 3.0, g_TeamColors[team],
+			player_hudmessage(id, 4, 3.0, {0, 255, 0},
 				(team == CS_TEAM_T) ? "Prisoner: %s - %i%" : "Guard: %s - %i%", name, health)
 		}
 	}
@@ -353,11 +356,26 @@ public player_attack(victim, attacker, Float:damage, Float:direction[3], traceha
 	if(ateam == CS_TEAM_CT && vteam == CS_TEAM_CT)
 		return HAM_SUPERCEDE
 
+	if(ateam == CS_TEAM_CT && vteam == CS_TEAM_T)
+	{
+		if(get_bit(g_PlayerRevolt, victim))
+		{
+			clear_bit(g_PlayerRevolt, victim)
+			hud_status(0)
+		}
+		return HAM_IGNORED
+	}
+
 	if(ateam == CS_TEAM_T && vteam == CS_TEAM_T && !g_BoxStarted)
 		return HAM_SUPERCEDE
 
-	if(ateam == CS_TEAM_T && vteam == CS_TEAM_CT && !g_RevoltStarted)
-		revolt_start()
+	if(ateam == CS_TEAM_T && vteam == CS_TEAM_CT)
+	{
+		if(!g_PlayerRevolt)
+			revolt_start()
+
+		set_bit(g_PlayerRevolt, attacker)
+	}
 
 	return HAM_IGNORED
 }
@@ -366,16 +384,24 @@ public player_killed(id)
 {
 	static CsTeams:team
 	team = cs_get_user_team(id)
-	if(team == CS_TEAM_CT)
+	switch(team)
 	{
-		team_count()
-		if(g_TeamCount[CS_TEAM_CT] > ctcount_allowed())
-			cs_set_user_team(id, CS_TEAM_T)
-
-		if(g_Simon == id)
+		case(CS_TEAM_CT):
 		{
-			g_Simon = 0
-			player_hudmessage(0, 0, 5.0, _, "Simon was killed. Another guard should take his job")
+			team_count()
+			if(g_TeamCount[CS_TEAM_CT] > ctcount_allowed())
+				cs_set_user_team(id, CS_TEAM_T)
+
+			if(g_Simon == id)
+			{
+				g_Simon = 0
+				ClearSyncHud(0, g_HudSync[2][_hudsync])
+				player_hudmessage(0, 2, 5.0, _, "Simon was killed. Another guard should take his job")
+			}
+		}
+		case(CS_TEAM_T):
+		{
+			clear_bit(g_PlayerRevolt, id)
 		}
 	}
 }
@@ -414,41 +440,37 @@ public sound_emit(id, channel, sample[])
 
 public voice_listening(receiver, sender, bool:listen)
 {
-	if(!is_user_connected(receiver) || !is_user_connected(sender) || (receiver == sender) || (sender == g_Simon))
+	if(!is_user_connected(receiver) || !is_user_connected(sender) || (receiver == sender) || (sender == g_Simon) || is_user_admin(sender))
 		return FMRES_IGNORED
  
-	listen = true
- 
-	if(g_SimonTalking)
+	if(g_SimonTalking && (sender != g_Simon))
 	{
-		if(sender != g_Simon)
-		{
-			engfunc(EngFunc_SetClientListening, receiver, sender, false)
-			return FMRES_SUPERCEDE
-		}
+		engfunc(EngFunc_SetClientListening, receiver, sender, false)
+		return FMRES_SUPERCEDE
 	}
-	else
+	else if((get_pcvar_num(gp_TalkMode) == 1) && (get_user_team(sender) == _:CS_TEAM_T) && (get_user_team(receiver) == _:CS_TEAM_CT))
 	{
-		if(get_user_team(sender) == _:CS_TEAM_T)
-		{
-			if(get_user_team(receiver) == _:CS_TEAM_CT)
-				listen = false
-			else
-				return FMRES_IGNORED
-		}
+		engfunc(EngFunc_SetClientListening, receiver, sender, false)
+		return FMRES_SUPERCEDE
 	}
+	else if((get_pcvar_num(gp_TalkMode) == 2) && !is_user_alive(sender))
+	{
+		engfunc(EngFunc_SetClientListening, receiver, sender, false)
+		return FMRES_SUPERCEDE
+	}
+	
  
-	engfunc(EngFunc_SetClientListening, receiver, sender, listen)
-	return FMRES_SUPERCEDE
+	return FMRES_IGNORED
 }
 
 public round_end()
 {
 	new CsTeams:team
-	g_RevoltStarted = 0
+	g_PlayerRevolt = 0
 	g_BoxStarted = 0
 	g_CrowbarCount = 0
 	g_Simon = 0
+	g_RoundStarted = 0
 	g_TeamCount[CS_TEAM_T] = 0
 	g_TeamCount[CS_TEAM_CT] = 0
 
@@ -513,7 +535,8 @@ public cmd_simon(id)
 	{
 		g_Simon = id
 		get_user_name(id, name, charsmax(name))
-		player_hudmessage(0, 0, 5.0, _, "%s is Simon. All prisoners must follow his orders.", name)
+		set_user_rendering(id, kRenderFxGlowShell, 0, 255, 0, kRenderNormal, 20)
+		hud_status(0)
 	}
 	return PLUGIN_HANDLED
 }
@@ -560,8 +583,16 @@ public cmd_box(id)
 public team_select(id, key)
 {
 	static CsTeams:team
+
 	team = cs_get_user_team(id)
 	team_count()
+
+	if((g_RoundStarted >= (get_pcvar_num(gp_RetryTime) / 2)) && g_TeamCount[CS_TEAM_CT] && g_TeamCount[CS_TEAM_T] && !is_user_alive(id))
+	{
+		client_print(id, print_center, "You can't join while in game")
+		return PLUGIN_HANDLED
+	}
+
 	switch(key)
 	{
 		case(0):
@@ -634,11 +665,9 @@ public team_count()
 
 public revolt_start()
 {
-	g_RevoltStarted = 1
-	player_hudmessage(0, 3, 10.0, {255, 50, 100}, "Prisoners started revolt!")
 	client_cmd(0,"speak ambience/siren")
-
 	set_task(8.0, "stop_sound")
+	hud_status(0)
 }
 
 public stop_sound(task)
@@ -648,18 +677,40 @@ public stop_sound(task)
 
 public hud_status(task)
 {
-	static szStatus[32], alive, i
+	static szStatus[32], alive, i, name[32]
  
+	if(g_RoundStarted < (get_pcvar_num(gp_RetryTime) / 2))
+		g_RoundStarted++
+
 	team_count()
 	alive = 0
 	for(i = 0; i < g_MaxClients; i++)
+	{
 		alive += get_bit(g_TeamAlive[CS_TEAM_T], i) ? 1 : 0
+	}
 
 	formatex(szStatus, charsmax(szStatus), "Prisoners: %i Alive / %i Total", alive, g_TeamCount[CS_TEAM_T])
 	message_begin(MSG_BROADCAST, get_user_msgid("StatusText"), {0,0,0}, 0)
 	write_byte(0)
 	write_string(szStatus)
 	message_end()
+
+	if(g_Simon)
+	{
+		get_user_name(g_Simon, name, charsmax(name))
+		player_hudmessage(0, 2, 2.0, {0, 255, 0}, "%s is Simon. All prisoners must follow his orders", name)
+	}
+	if(g_PlayerRevolt)
+	{
+		player_hudmessage(0, 3, 3.0, {255, 25, 50}, "Prisoners started revolt!")
+	}
+}
+
+stock is_user_admin(id)
+{
+	static __flags
+	__flags = get_user_flags(id);
+	return (__flags>0 && !(__flags&ADMIN_USER));
 }
 
 stock ctcount_allowed()
@@ -676,12 +727,14 @@ stock ctcount_allowed()
 
 stock player_hudmessage(id, hudid, Float:time = 0.0, color[3] = {0, 255, 0}, msg[128], any:...)
 {
-	static text[128]
-	if(time)
-		set_hudmessage(color[0], color[1], color[2], -1.0, 0.80, 0, 0.01, time, 0.01, 0.01, 1)
+	static text[128], Float:x, Float:y
+	x = g_HudSync[hudid][_x]
+	y = g_HudSync[hudid][_y]
+	
+	if(time <= 0)
+		set_hudmessage(color[0], color[1], color[2], x, y, 0, 0.01, time, 0.01, 0.01, 1)
 	else
-		set_hudmessage(color[0], color[1], color[2], g_HudSync[hudid][_x], g_HudSync[hudid][_y],
-				0, 0.01, g_HudSync[hudid][_time], 0.01, 0.01, 1)
+		set_hudmessage(color[0], color[1], color[2], x, y, 0, 0.01, g_HudSync[hudid][_time], 0.01, 0.01, 1)
 
 	vformat(text, charsmax(text), msg, 6)
 	ShowSyncHudMsg(id, g_HudSync[hudid][_hudsync], text)
