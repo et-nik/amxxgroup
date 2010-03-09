@@ -7,7 +7,7 @@
  
 #define	PLUGIN_NAME	"JailBreak Extreme"
 #define	PLUGIN_AUTHOR	"JoRoPiTo"
-#define	PLUGIN_VERSION	"1.1"
+#define	PLUGIN_VERSION	"1.2"
 #define	PLUGIN_CVAR	"jbextreme"
 
 #define TASK_STATUS	2487000
@@ -49,16 +49,21 @@ new const _RemoveEntities[][] = {
 
 
 // Reasons
-new const g_Reasons[][] =  { "", "robbery", "kidnapping", "hijacking", "murder", "battery", "prostitution" }
+new const g_Reasons[][] =  {
+	"",
+	"JBE_PRISONER_REASON_1",
+	"JBE_PRISONER_REASON_2",
+	"JBE_PRISONER_REASON_3",
+	"JBE_PRISONER_REASON_4",
+	"JBE_PRISONER_REASON_5",
+	"JBE_PRISONER_REASON_6"
+}
 
 // HudSync: 0=status / 1=messages / 2=skills / 3=alerts / 4=info
 new const g_HudSync[][_hud] = { {0,  0.1,  0.3,  2.0}, {0, -1.0, 0.7,  5.0}, {0,  0.1, 0.2, 10.0}, {0, 0.2, 0.3, 10.0}, {0, -1.0, 0.9, 3.0} }
 
 // UNASSIGNED / T / CT / SPECTATOR
 //new const g_TeamColors[CsTeams][3] = { {0, 0, 0}, {255, 0, 0}, {0, 0, 255}, {0, 0, 0} }
-
-// Status
-new const g_ModeStatus[][] = { "disabled", "enabled" }
 
 new g_PlayerDaysleft[33]
 new g_PlayerReason[33]
@@ -81,6 +86,8 @@ public plugin_init()
 	register_plugin(PLUGIN_NAME, PLUGIN_VERSION, PLUGIN_AUTHOR)
 	register_cvar(PLUGIN_CVAR, PLUGIN_VERSION, FCVAR_SERVER|FCVAR_SPONLY)
  
+	register_dictionary("jbextreme.txt")
+
 	g_MsgStatusIcon = get_user_msgid("StatusIcon")
 	g_MsgVGUIMenu = get_user_msgid("VGUIMenu")
 	g_MsgShowMenu = get_user_msgid("ShowMenu")
@@ -206,7 +213,7 @@ public msg_vguimenu(msgid, dest, id)
 	{
 		if(is_user_alive(id) && (cs_get_user_team(id) == CS_TEAM_T))
 		{
-			client_print(id, print_center, "You can't change team right now")
+			client_print(id, print_center, "%L", LANG_PLAYER, "JBE_TEAM_CANTCHANGE")
 			return PLUGIN_HANDLED
 		}
 		show_menu(id, 51, "#Team_Select", -1)
@@ -225,7 +232,7 @@ public msg_showmenu(msgid, dest, id)
 
 	if(is_user_alive(id) && (cs_get_user_team(id) == CS_TEAM_T))
 	{
-		client_print(id, print_center, "You can't change team right now")
+		client_print(id, print_center, "%L", LANG_PLAYER, "JBE_TEAM_CANTCHANGE")
 		return PLUGIN_HANDLED
 	}
 
@@ -274,8 +281,8 @@ public player_status(id)
 
 			health = get_user_health(player)
 			get_user_name(player, name, charsmax(name))
-			player_hudmessage(id, 4, 3.0, {0, 255, 0},
-				(team == CS_TEAM_T) ? "Prisoner: %s - %i%" : "Guard: %s - %i%", name, health)
+			player_hudmessage(id, 4, 3.0, {0, 255, 0}, "%L", LANG_PLAYER,
+				(team == CS_TEAM_T) ? "JBE_PRISONER_STATUS" : "JBE_GUARD_STATUS", name, health)
 		}
 	}
 	
@@ -310,7 +317,7 @@ public player_spawn(id)
 		case(CS_TEAM_T):
 		{
 			
-			player_hudmessage(id, 2, _, _, "You have %i days left. ^nYou're in jail for %s",
+			player_hudmessage(id, 2, _, _, "%L", LANG_PLAYER, "JBE_PRISONER_REASON",
 				g_PlayerDaysleft[id], g_Reasons[g_PlayerReason[id]])
 			g_PlayerDaysleft[id]--
 			set_bit(g_TeamAlive[CS_TEAM_T], id)
@@ -350,6 +357,9 @@ public player_damage(victim, ent, attacker, Float:damage, bits)
 public player_attack(victim, attacker, Float:damage, Float:direction[3], tracehandle, damagebits)
 {
 	static CsTeams:vteam, CsTeams:ateam
+	if(!is_user_connected(victim) || !is_user_connected(attacker))
+		return HAM_IGNORED
+
 	vteam = cs_get_user_team(victim)
 	ateam = cs_get_user_team(attacker)
 
@@ -396,7 +406,7 @@ public player_killed(id)
 			{
 				g_Simon = 0
 				ClearSyncHud(0, g_HudSync[2][_hudsync])
-				player_hudmessage(0, 2, 5.0, _, "Simon was killed. Another guard should take his job")
+				player_hudmessage(0, 2, 5.0, _, "%L", LANG_PLAYER, "JBE_SIMON_KILLED")
 			}
 		}
 		case(CS_TEAM_T):
@@ -550,7 +560,7 @@ public cmd_nomic(id)
 		if(g_Simon == id)
 		{
 			g_Simon = 0
-			player_hudmessage(0, 0, 5.0, _, "Simon was transfered to prisoners team.^nAnother guard should take his job")
+			player_hudmessage(0, 0, 5.0, _, "%L", LANG_PLAYER, "JBE_SIMON_TRANSFERED")
 		}
 		alive = is_user_alive(id)
 		cs_set_user_team(id, CS_TEAM_T)
@@ -570,11 +580,11 @@ public cmd_box(id)
 		if(g_TeamCount[CS_TEAM_T] <= get_pcvar_num(gp_BoxMax))
 		{
 			g_BoxStarted = 1
-			player_hudmessage(0, 1, 3.0, _, "Box mod %s", g_ModeStatus[g_BoxStarted])
+			player_hudmessage(0, 1, 3.0, _, "%L", LANG_PLAYER, "JBE_GUARD_BOX")
 		}
 		else
 		{
-			player_hudmessage(id, 1, 3.0, _, "You can't start box mode. Too many prisoners.")
+			player_hudmessage(id, 1, 3.0, _, "%L", LANG_PLAYER, "JBE_GUARD_CANTBOX")
 		}
 	}
 	return PLUGIN_HANDLED
@@ -589,7 +599,7 @@ public team_select(id, key)
 
 	if((g_RoundStarted >= (get_pcvar_num(gp_RetryTime) / 2)) && g_TeamCount[CS_TEAM_CT] && g_TeamCount[CS_TEAM_T] && !is_user_alive(id))
 	{
-		client_print(id, print_center, "You can't join while in game")
+		client_print(id, print_center, "%L", LANG_PLAYER, "JBE_TEAM_CANTJOIN")
 		return PLUGIN_HANDLED
 	}
 
@@ -613,7 +623,7 @@ public team_select(id, key)
 			if(g_TeamCount[CS_TEAM_CT] < ctcount_allowed())
 				team_join(id, CS_TEAM_CT)
 			else
-				client_print(id, print_center, "There's too much CTs")
+				client_print(id, print_center, "%L", LANG_PLAYER, "JBE_TEAM_CTFULL")
 		}
 	}
 	return PLUGIN_HANDLED
@@ -689,7 +699,7 @@ public hud_status(task)
 		alive += get_bit(g_TeamAlive[CS_TEAM_T], i) ? 1 : 0
 	}
 
-	formatex(szStatus, charsmax(szStatus), "Prisoners: %i Alive / %i Total", alive, g_TeamCount[CS_TEAM_T])
+	formatex(szStatus, charsmax(szStatus), "%L", LANG_PLAYER, "JBE_STATUS", alive, g_TeamCount[CS_TEAM_T])
 	message_begin(MSG_BROADCAST, get_user_msgid("StatusText"), {0,0,0}, 0)
 	write_byte(0)
 	write_string(szStatus)
@@ -698,11 +708,11 @@ public hud_status(task)
 	if(g_Simon)
 	{
 		get_user_name(g_Simon, name, charsmax(name))
-		player_hudmessage(0, 2, 2.0, {0, 255, 0}, "%s is Simon. All prisoners must follow his orders", name)
+		player_hudmessage(0, 2, 2.0, {0, 255, 0}, "%L", LANG_PLAYER, "JBE_SIMON_FOLLOW", name)
 	}
 	if(g_PlayerRevolt)
 	{
-		player_hudmessage(0, 3, 3.0, {255, 25, 50}, "Prisoners started revolt!")
+		player_hudmessage(0, 3, 3.0, {255, 25, 50}, "%L", LANG_PLAYER, "JBE_PRISONER_REVOLT")
 	}
 }
 
