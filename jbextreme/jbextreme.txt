@@ -41,3 +41,25 @@ JBE_PRISONER_REASON_3 = estafa
 JBE_PRISONER_REASON_4 = asesinato
 JBE_PRISONER_REASON_5 = agresion
 JBE_PRISONER_REASON_6 = prositucion
+
+[nl]
+JBE_TEAM_CANTCHANGE = Je kan momenteel niet van team veranderen.
+JBE_TEAM_CANTJOIN = Je kan niet meedoen als het spel bezig is.
+JBE_TEAM_CTFULL = Er zijn teveel CT's.
+JBE_STATUS = Gevangenen: %i Levend / %i in Totaal
+JBE_SIMON_FOLLOW = %s is Simon. Alle gevangenen moeten zijn bevelen volgen.
+JBE_SIMON_KILLED = Simon is vermoord. Een andere bewaker moet zijn plaats innemen.
+JBE_SIMON_TRANSFERED = Simon is overgeplaatst naar de gevangenen.^nEen andere bewaker moet zijn plaats innemen.
+JBE_PRISONER_REVOLT = Gevangenen begonnen een opstand!
+JBE_PRISONER_STATUS = Gevangene: %s - %i%
+JBE_PRISONER_REASON = Je hebt %i dagen over. ^nJe bent in de gevangenis voor 
+JBE_PRISONER_WANTED = Gezochte Gevangenen:
+JBE_GUARD_STATUS = Bewaker: %s - %i%
+JBE_GUARD_CANTBOX = Je kan geen boks modus beginnen. Te veel gevangenen.
+JBE_GUARD_BOX = Boks Modus geactiveerd
+JBE_PRISONER_REASON_1 = overval
+JBE_PRISONER_REASON_2 = ontvoering
+JBE_PRISONER_REASON_3 = kaping
+JBE_PRISONER_REASON_4 = moord
+JBE_PRISONER_REASON_5 = geweldpleging
+JBE_PRISONER_REASON_6 = prostitutie
