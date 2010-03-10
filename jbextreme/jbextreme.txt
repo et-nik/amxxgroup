@@ -1,0 +1,43 @@
+[en]
+JBE_TEAM_CANTCHANGE = You can't change team right now
+JBE_TEAM_CANTJOIN = You can't join while in game
+JBE_TEAM_CTFULL = There's too much CTs
+JBE_STATUS = Prisoners: %i Alive / %i Total
+JBE_SIMON_FOLLOW = %s is Simon. All prisoners must follow his orders
+JBE_SIMON_KILLED = Simon was killed. Another guard should take his job
+JBE_SIMON_TRANSFERED = Simon was transfered to prisoners team.^nAnother guard should take his job
+JBE_PRISONER_REVOLT = Prisoners started revolt!
+JBE_PRISONER_STATUS = Prisoner: %s - %i%
+JBE_PRISONER_REASON = You have %i days left. ^nYou're in jail for 
+JBE_PRISONER_WANTED = Prisoners wanted:
+JBE_GUARD_STATUS = Guard: %s - %i%
+JBE_GUARD_CANTBOX = You can't start box mode. Too many prisoners
+JBE_GUARD_BOX = Box mod enabled
+JBE_PRISONER_REASON_1 = robbery
+JBE_PRISONER_REASON_2 = kidnapping
+JBE_PRISONER_REASON_3 = hijacking
+JBE_PRISONER_REASON_4 = murder
+JBE_PRISONER_REASON_5 = battery
+JBE_PRISONER_REASON_6 = prostitution
+
+[es]
+JBE_TEAM_CANTCHANGE = No puedes cambiar de equipo en este momento.
+JBE_TEAM_CANTJOIN = No puedes entrar a un equipo durante la ronda.
+JBE_TEAM_CTFULL = Hay demasiados guardias.
+JBE_STATUS = Prisioneros: %i Vivos / %i Total
+JBE_SIMON_FOLLOW = %s es Simon. Todos los prisioneros deben seguir sus ordenes.
+JBE_SIMON_KILLED = Simon fue asesinado. Otro guardia debera tomar su lugar.
+JBE_SIMON_TRANSFERED = Simon fue transferido de equipo.^nOtro guardia debera tomar su lugar.
+JBE_PRISONER_REVOLT = Los prisioneros comenzaron una rebelion.
+JBE_PRISONER_STATUS = Prisionero: %s - %i%
+JBE_PRISONER_REASON = Te quedan %i dias. ^nTu estas encarcelado por 
+JBE_PRISONER_WANTED = Prisioneros buscados:
+JBE_GUARD_STATUS = Guardia: %s - %i%
+JBE_GUARD_CANTBOX = No puedes iniciar el modo box. Hay demasiados prisioneros vivos.
+JBE_GUARD_BOX = Modo box activado
+JBE_PRISONER_REASON_1 = robo
+JBE_PRISONER_REASON_2 = secuestro
+JBE_PRISONER_REASON_3 = estafa
+JBE_PRISONER_REASON_4 = asesinato
+JBE_PRISONER_REASON_5 = agresion
+JBE_PRISONER_REASON_6 = prositucion
