@@ -1,4 +1,5 @@
 #include <amxmodx>
+#include <amxmisc>
 #include <engine>
 #include <fakemeta>
 #include <hamsandwich>
@@ -7,10 +8,12 @@
  
 #define	PLUGIN_NAME	"JailBreak Extreme"
 #define	PLUGIN_AUTHOR	"JoRoPiTo"
-#define	PLUGIN_VERSION	"1.2"
+#define	PLUGIN_VERSION	"1.3"
 #define	PLUGIN_CVAR	"jbextreme"
 
 #define TASK_STATUS	2487000
+#define TEAM_MENU	"#Team_Select_Spect"
+#define TEAM_MENU2	"#Team_Select_Spect"
 
 #define get_bit(%1,%2) 		( %1 &   1 << ( %2 & 31 ) )
 #define set_bit(%1,%2)	 	%1 |=  ( 1 << ( %2 & 31 ) )
@@ -19,6 +22,7 @@
 // Offsets
 #define m_iPrimaryWeapon	116
 #define m_iVGUI			510
+#define m_fGameHUDInitialized	349
  
 enum _hud { _hudsync, Float:_x, Float:_y, Float:_time }
 
@@ -33,6 +37,7 @@ new gp_TalkMode
 new gp_RetryTime
 
 new g_MaxClients
+new g_MsgStatusText
 new g_MsgStatusIcon
 new g_MsgVGUIMenu
 new g_MsgShowMenu
@@ -59,8 +64,16 @@ new const g_Reasons[][] =  {
 	"JBE_PRISONER_REASON_6"
 }
 
-// HudSync: 0=status / 1=messages / 2=skills / 3=alerts / 4=info
-new const g_HudSync[][_hud] = { {0,  0.1,  0.3,  2.0}, {0, -1.0, 0.7,  5.0}, {0,  0.1, 0.2, 10.0}, {0, 0.2, 0.3, 10.0}, {0, -1.0, 0.9, 3.0} }
+// HudSync: 0=status / 1=messages / 2=skills / 3=alerts / 4=info / 5=wanted
+new const g_HudSync[][_hud] =
+{
+	{0,  0.1, 0.3,  2.0},
+	{0, -1.0, 0.7,  5.0},
+	{0,  0.1, 0.2, 10.0},
+	{0,  0.1, 0.3, 10.0},
+	{0, -1.0, 0.9,  3.0},
+	{0,  0.1, 0.4,  3.0}
+}
 
 // UNASSIGNED / T / CT / SPECTATOR
 //new const g_TeamColors[CsTeams][3] = { {0, 0, 0}, {255, 0, 0}, {0, 0, 255}, {0, 0, 0} }
@@ -88,17 +101,20 @@ public plugin_init()
  
 	register_dictionary("jbextreme.txt")
 
+	g_MsgStatusText = get_user_msgid("StatusText")
 	g_MsgStatusIcon = get_user_msgid("StatusIcon")
 	g_MsgVGUIMenu = get_user_msgid("VGUIMenu")
 	g_MsgShowMenu = get_user_msgid("ShowMenu")
 	g_MsgMOTD = get_user_msgid("MOTD")
 
+	register_message(g_MsgStatusText, "msg_statustext")
 	register_message(g_MsgStatusIcon, "msg_statusicon")
 	register_message(g_MsgVGUIMenu, "msg_vguimenu")
 	register_message(g_MsgShowMenu, "msg_showmenu")
 	register_message(g_MsgMOTD, "msg_motd")
 
 	register_event("CurWeapon", "current_weapon", "be", "1=1", "2=29")
+	register_event("DeathMsg","player_death","a")
 	register_event("StatusValue", "player_status", "be", "1=2", "2!0")
 	register_event("StatusValue", "player_status", "be", "1=1", "2=0")
 
@@ -118,7 +134,8 @@ public plugin_init()
 	register_logevent("round_end", 2, "0=World triggered", "1=Game_Commencing")
 	register_logevent("round_start", 2, "0=World triggered", "1=Round_Start")
 
-	register_menucmd(register_menuid("#Team_Select"), 51, "team_select") 
+	register_menucmd(register_menuid(TEAM_MENU), 51, "team_select") 
+	register_menucmd(register_menuid(TEAM_MENU2), 51, "team_select") 
 
 	register_clcmd("jointeam", "cmd_jointeam")
 	register_clcmd("joinclass", "cmd_joinclass")
@@ -128,6 +145,8 @@ public plugin_init()
 	register_clcmd("say /simon", "cmd_simon")
 	register_clcmd("say /nomic", "cmd_nomic")
 	register_clcmd("say /box", "cmd_box")
+
+	register_clcmd("jbe_nomic", "adm_nomic", ADMIN_KICK)
  
 	gp_CrowbarMul = register_cvar("jbe_crowbarmultiplier", "25.0")
 	gp_CrowbarMax = register_cvar("jbe_maxcrowbar", "1")
@@ -191,6 +210,11 @@ public client_putinserver(id)
 	g_PlayerDaysleft[id] = 0
 }
  
+public msg_statustext(msgid, dest, id)
+{
+	return PLUGIN_HANDLED
+}
+
 public msg_statusicon(msgid, dest, id)
 {
 	static icon[5] 
@@ -213,10 +237,10 @@ public msg_vguimenu(msgid, dest, id)
 	{
 		if(is_user_alive(id) && (cs_get_user_team(id) == CS_TEAM_T))
 		{
-			client_print(id, print_center, "%L", LANG_PLAYER, "JBE_TEAM_CANTCHANGE")
+			client_print(id, print_center, "%L", LANG_SERVER, "JBE_TEAM_CANTCHANGE")
 			return PLUGIN_HANDLED
 		}
-		show_menu(id, 51, "#Team_Select", -1)
+		show_menu(id, 51, TEAM_MENU, -1)
 		return PLUGIN_HANDLED
 	}
 
@@ -232,7 +256,7 @@ public msg_showmenu(msgid, dest, id)
 
 	if(is_user_alive(id) && (cs_get_user_team(id) == CS_TEAM_T))
 	{
-		client_print(id, print_center, "%L", LANG_PLAYER, "JBE_TEAM_CANTCHANGE")
+		client_print(id, print_center, "%L", LANG_SERVER, "JBE_TEAM_CANTCHANGE")
 		return PLUGIN_HANDLED
 	}
 
@@ -262,6 +286,28 @@ public current_weapon(id)
 	return PLUGIN_CONTINUE
 }
 
+public player_death(id)
+{
+	static killer, victim, CsTeams:kteam, CsTeams:vteam
+
+	killer = read_data(1) 
+	victim = read_data(2) 
+
+	if(!is_user_connected(victim) || !is_user_alive(killer))
+		return PLUGIN_CONTINUE
+
+	kteam = cs_get_user_team(killer)
+	vteam = cs_get_user_team(victim)
+
+	if(vteam == CS_TEAM_CT && kteam == CS_TEAM_T && !get_bit(g_PlayerWanted, killer))
+	{
+		set_bit(g_PlayerWanted, killer)
+		hud_status(0)
+	}
+
+	return PLUGIN_CONTINUE
+}
+
 public player_status(id)
 {
 	static type, player, CsTeams:team, name[32], health
@@ -281,7 +327,7 @@ public player_status(id)
 
 			health = get_user_health(player)
 			get_user_name(player, name, charsmax(name))
-			player_hudmessage(id, 4, 3.0, {0, 255, 0}, "%L", LANG_PLAYER,
+			player_hudmessage(id, 4, 3.0, {0, 255, 0}, "%L", LANG_SERVER,
 				(team == CS_TEAM_T) ? "JBE_PRISONER_STATUS" : "JBE_GUARD_STATUS", name, health)
 		}
 	}
@@ -317,10 +363,9 @@ public player_spawn(id)
 		case(CS_TEAM_T):
 		{
 			
-			player_hudmessage(id, 2, _, _, "%L", LANG_PLAYER, "JBE_PRISONER_REASON",
-				g_PlayerDaysleft[id], g_Reasons[g_PlayerReason[id]])
+			player_hudmessage(id, 2, _, _, "%L%L", LANG_SERVER, "JBE_PRISONER_REASON",
+				g_PlayerDaysleft[id], LANG_SERVER, g_Reasons[g_PlayerReason[id]])
 			g_PlayerDaysleft[id]--
-			set_bit(g_TeamAlive[CS_TEAM_T], id)
 			set_user_info(id, "model", "wiezien")
 			if(g_CrowbarCount < get_pcvar_num(gp_CrowbarMax))
 			{
@@ -333,7 +378,6 @@ public player_spawn(id)
 		}
 		case(CS_TEAM_CT):
 		{
-			set_bit(g_TeamAlive[CS_TEAM_CT], id)
 			set_user_info(id, "model", "straznik")
 		}
 	}
@@ -406,12 +450,13 @@ public player_killed(id)
 			{
 				g_Simon = 0
 				ClearSyncHud(0, g_HudSync[2][_hudsync])
-				player_hudmessage(0, 2, 5.0, _, "%L", LANG_PLAYER, "JBE_SIMON_KILLED")
+				player_hudmessage(0, 2, 5.0, _, "%L", LANG_SERVER, "JBE_SIMON_KILLED")
 			}
 		}
 		case(CS_TEAM_T):
 		{
 			clear_bit(g_PlayerRevolt, id)
+			clear_bit(g_PlayerWanted, id)
 		}
 	}
 }
@@ -491,11 +536,20 @@ public round_end()
 			continue
 
 		team = cs_get_user_team(i)
-		if((team == CS_TEAM_T) && (g_PlayerDaysleft[i] <= 0))
+		switch(team)
 		{
-			g_PlayerDaysleft[i] = random_num(4, get_pcvar_num(gp_MaxDays))
-			g_PlayerReason[i] = random_num(1, 6)
-			continue
+			case(CS_TEAM_SPECTATOR):
+			{
+				show_menu(i, 51, TEAM_MENU, -1)
+			}
+			case(CS_TEAM_T):
+			{
+				if(g_PlayerDaysleft[i] <= 0)
+				{
+					g_PlayerDaysleft[i] = random_num(4, get_pcvar_num(gp_MaxDays))
+					g_PlayerReason[i] = random_num(1, 6)
+				}
+			}
 		}
 	}
 	for(new i = 0; i < sizeof(g_HudSync); i++)
@@ -520,20 +574,18 @@ public cmd_joinclass(id)
 public cmd_voiceon(id)
 {
 	client_cmd(id, "+voicerecord")
-	if(g_Simon != id)
-		return PLUGIN_HANDLED
- 
-	g_SimonTalking = 1
+	if(g_Simon == id || is_user_admin(id))
+		set_bit(g_SimonTalking, id)
+
 	return PLUGIN_HANDLED
 }
 
 public cmd_voiceoff(id)
 {
 	client_cmd(id, "-voicerecord")
-	if(g_Simon != id)
-		return PLUGIN_HANDLED
- 
-	g_SimonTalking = 0
+	if(g_Simon == id || is_user_admin(id))
+		clear_bit(g_SimonTalking, id)
+
 	return PLUGIN_HANDLED
 }
 
@@ -560,8 +612,10 @@ public cmd_nomic(id)
 		if(g_Simon == id)
 		{
 			g_Simon = 0
-			player_hudmessage(0, 0, 5.0, _, "%L", LANG_PLAYER, "JBE_SIMON_TRANSFERED")
+			player_hudmessage(0, 0, 5.0, _, "%L", LANG_SERVER, "JBE_SIMON_TRANSFERED")
 		}
+		if(!is_user_admin(id))
+			set_bit(g_PlayerNomic, id)
 		alive = is_user_alive(id)
 		cs_set_user_team(id, CS_TEAM_T)
 		if(alive)
@@ -577,31 +631,55 @@ public cmd_box(id)
 	if(is_user_alive(id) && team == CS_TEAM_CT)
 	{
 		team_count()
-		if(g_TeamCount[CS_TEAM_T] <= get_pcvar_num(gp_BoxMax))
+		if(g_TeamAlive[CS_TEAM_T] <= get_pcvar_num(gp_BoxMax))
 		{
+			set_cvar_num("mp_friendlyfire", 1)
 			g_BoxStarted = 1
-			player_hudmessage(0, 1, 3.0, _, "%L", LANG_PLAYER, "JBE_GUARD_BOX")
+			player_hudmessage(0, 1, 3.0, _, "%L", LANG_SERVER, "JBE_GUARD_BOX")
 		}
 		else
 		{
-			player_hudmessage(id, 1, 3.0, _, "%L", LANG_PLAYER, "JBE_GUARD_CANTBOX")
+			player_hudmessage(id, 1, 3.0, _, "%L", LANG_SERVER, "JBE_GUARD_CANTBOX")
 		}
 	}
 	return PLUGIN_HANDLED
 }
 
+public adm_nomic(id)
+{
+	static player, user[32]
+	read_argv(1, user, charsmax(user));
+	player = cmd_target(id, user, 3);
+	if(is_user_connected(player))
+	{
+		cmd_nomic(player)
+	}
+	return PLUGIN_HANDLED
+}
+
+
 public team_select(id, key)
 {
-	static CsTeams:team
+	static CsTeams:team, roundloop, admin
 
+	roundloop = get_pcvar_num(gp_RetryTime) / 2
 	team = cs_get_user_team(id)
+	admin = is_user_admin(id)
 	team_count()
 
-	if((g_RoundStarted >= (get_pcvar_num(gp_RetryTime) / 2)) && g_TeamCount[CS_TEAM_CT] && g_TeamCount[CS_TEAM_T] && !is_user_alive(id))
+	if(!admin && (team == CS_TEAM_UNASSIGNED) && (g_RoundStarted >= roundloop) && g_TeamCount[CS_TEAM_CT] && g_TeamCount[CS_TEAM_T] && !is_user_alive(id))
 	{
-		client_print(id, print_center, "%L", LANG_PLAYER, "JBE_TEAM_CANTJOIN")
+		new block = get_msg_block(g_MsgShowMenu)
+		set_msg_block(g_MsgShowMenu, BLOCK_ONCE)
+		dllfunc(DLLFunc_ClientPutInServer, id)
+		set_msg_block(g_MsgShowMenu, block)
+		set_pdata_int(id, m_fGameHUDInitialized, 1)
+		engclient_cmd(id, "jointeam", "6")
+		client_print(id, print_center, "%L", LANG_SERVER, "JBE_TEAM_CANTJOIN")
+		show_menu(id, 51, TEAM_MENU, -1)
 		return PLUGIN_HANDLED
 	}
+
 
 	switch(key)
 	{
@@ -617,13 +695,13 @@ public team_select(id, key)
 		}
 		case(1):
 		{
-			if(team == CS_TEAM_CT)
+			if(team == CS_TEAM_CT || (!admin && get_bit(g_PlayerNomic, id)))
 				return PLUGIN_HANDLED
 
-			if(g_TeamCount[CS_TEAM_CT] < ctcount_allowed())
+			if(g_TeamCount[CS_TEAM_CT] < ctcount_allowed() || admin)
 				team_join(id, CS_TEAM_CT)
 			else
-				client_print(id, print_center, "%L", LANG_PLAYER, "JBE_TEAM_CTFULL")
+				client_print(id, print_center, "%L", LANG_SERVER, "JBE_TEAM_CTFULL")
 		}
 	}
 	return PLUGIN_HANDLED
@@ -666,9 +744,7 @@ public team_count()
 			team = cs_get_user_team(i)
 			g_TeamCount[team]++
 			if(is_user_alive(i))
-				set_bit(g_TeamAlive[team], i)
-			else
-				clear_bit(g_TeamAlive[team], i)
+				g_TeamAlive[team]++
 		}
 	}
 }
@@ -687,19 +763,27 @@ public stop_sound(task)
 
 public hud_status(task)
 {
-	static szStatus[32], alive, i, name[32]
+	static i, n
+	new name[32], szStatus[32], wanted[1024]
  
 	if(g_RoundStarted < (get_pcvar_num(gp_RetryTime) / 2))
 		g_RoundStarted++
 
 	team_count()
-	alive = 0
+	n = 0
+	formatex(wanted, charsmax(wanted), "%L", LANG_SERVER, "JBE_PRISONER_WANTED")
+	n = strlen(wanted)
 	for(i = 0; i < g_MaxClients; i++)
 	{
-		alive += get_bit(g_TeamAlive[CS_TEAM_T], i) ? 1 : 0
+		if(get_bit(g_PlayerWanted, i) && is_user_alive(i) && n < charsmax(wanted))
+		{
+			get_user_name(i, name, charsmax(name))
+			n += copy(wanted[n], charsmax(wanted) - n, "^n^t")
+			n += copy(wanted[n], charsmax(wanted) - n, name)
+		}
 	}
 
-	formatex(szStatus, charsmax(szStatus), "%L", LANG_PLAYER, "JBE_STATUS", alive, g_TeamCount[CS_TEAM_T])
+	formatex(szStatus, charsmax(szStatus), "%L", LANG_SERVER, "JBE_STATUS", g_TeamAlive[CS_TEAM_T], g_TeamCount[CS_TEAM_T])
 	message_begin(MSG_BROADCAST, get_user_msgid("StatusText"), {0,0,0}, 0)
 	write_byte(0)
 	write_string(szStatus)
@@ -708,19 +792,15 @@ public hud_status(task)
 	if(g_Simon)
 	{
 		get_user_name(g_Simon, name, charsmax(name))
-		player_hudmessage(0, 2, 2.0, {0, 255, 0}, "%L", LANG_PLAYER, "JBE_SIMON_FOLLOW", name)
+		player_hudmessage(0, 2, 2.0, {0, 255, 0}, "%L", LANG_SERVER, "JBE_SIMON_FOLLOW", name)
 	}
-	if(g_PlayerRevolt)
-	{
-		player_hudmessage(0, 3, 3.0, {255, 25, 50}, "%L", LANG_PLAYER, "JBE_PRISONER_REVOLT")
-	}
-}
 
-stock is_user_admin(id)
-{
-	static __flags
-	__flags = get_user_flags(id);
-	return (__flags>0 && !(__flags&ADMIN_USER));
+	ClearSyncHud(0, g_HudSync[3][_hudsync])
+
+	if(g_PlayerWanted)
+		player_hudmessage(0, 3, 3.0, {255, 25, 50}, "%s", wanted)
+	else if(g_PlayerRevolt)
+		player_hudmessage(0, 3, 3.0, {255, 25, 50}, "%L", LANG_SERVER, "JBE_PRISONER_REVOLT")
 }
 
 stock ctcount_allowed()
