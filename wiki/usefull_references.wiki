@@ -19,3 +19,5 @@
 [http://www.slipgate.de/hltv/hltv_FAQ_coders.html HLTV Coder]
 
 [http://www.fabiensanglard.net/quakeSource/index.php Quake Engine]
+
+[http://forums.alliedmods.net/showthread.php?p=175507 Decals]
