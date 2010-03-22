@@ -1,7 +1,7 @@
 /*
 Changelog:
 
-v1.4
+v1.5
 	* Improved team select code
 	* Improved team status code
 	* Updated dictionary
