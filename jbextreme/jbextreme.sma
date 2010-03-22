@@ -4,7 +4,11 @@ Changelog:
 v1.4
 	* Improved team select code
 	* Improved team status code
+	* Updated dictionary
+	* Added custom model (using body+skin)
+	* Added sounds
 	* Added freeday menu command
+	* Added lastrequest menu command & functionalities
 	* Added help command
 	* Added last prisoner hud message
 	* Added cvar to change talk mode control (+simonvoice optional or required to talk)
@@ -28,7 +32,7 @@ v1.3
  
 #define	PLUGIN_NAME	"JailBreak Extreme"
 #define	PLUGIN_AUTHOR	"JoRoPiTo"
-#define	PLUGIN_VERSION	"1.4"
+#define	PLUGIN_VERSION	"1.5"
 #define	PLUGIN_CVAR	"jbextreme"
 
 #define TASK_STATUS	2487000
@@ -73,10 +77,10 @@ new g_MsgStatusText
 new g_MsgStatusIcon
 new g_MsgVGUIMenu
 new g_MsgShowMenu
+new g_MsgClCorpse
 new g_MsgMOTD
 
 // Precache
-new const _PrisonerModels[][] = { "wiezien", "prisoner1" }
 new const _FistModels[][] = { "models/p_bknuckles.mdl", "models/v_bknuckles.mdl" }
 new const _CrowbarModels[][] = { "models/p_crowbar.mdl", "models/v_crowbar.mdl" }
 new const _FistSounds[][] = { "weapons/cbar_hitbod2.wav", "weapons/cbar_hitbod1.wav", "weapons/bullet_hit1.wav", "weapons/bullet_hit2.wav" }
@@ -86,7 +90,9 @@ new const _RemoveEntities[][] = {
 }
 
 new const _WeaponsFree[][] = { "weapon_scout", "weapon_deagle", "weapon_mac10", "weapon_elite", "weapon_ak47", "weapon_m4a1", "weapon_mp5navy" }
-new const _WeaponsCSW[] = { CSW_SCOUT, CSW_DEAGLE, CSW_MAC10, CSW_ELITE, CSW_AK47, CSW_M4A1, CSW_MP5NAVY }
+new const _WeaponsFreeCSW[] = { CSW_SCOUT, CSW_DEAGLE, CSW_MAC10, CSW_ELITE, CSW_AK47, CSW_M4A1, CSW_MP5NAVY }
+new const _WeaponsGuns[][] = { "weapon_usp", "weapon_deagle", "weapon_glock", "weapon_elite", "weapon_p228", "weapon_fiveseven" }
+new const _WeaponsGunsCSW[] = { CSW_USP, CSW_DEAGLE, CSW_GLOCK, CSW_ELITE, CSW_P228, CSW_FIVESEVEN }
 new const _WeaponsAmmo[] = { 90, 35, 100, 120, 90, 90, 120 }
 
 // Reasons
@@ -121,7 +127,6 @@ new CsTeams:g_PlayerTeam[33]
 new g_HelpText[512]
 new g_JailDay
 new g_PlayerJoin
-new g_PlayerModel[33]
 new g_PlayerReason[33]
 new g_PlayerNomic
 new g_PlayerWanted
@@ -130,18 +135,20 @@ new g_PlayerRevolt
 new g_PlayerHelp
 new g_PlayerFreeday
 new g_PlayerLast
-new g_AutoFreeday
+new g_FreedayAuto
+new g_FreedayNext
 new g_TeamCount[CsTeams]
 new g_TeamAlive[CsTeams]
 new g_BoxStarted
 new g_CrowbarCount
 new g_Simon
+new g_SimonAllowed
 new g_SimonTalking
 new g_SimonVoice
 new g_RoundStarted
-new g_LastRequest
 new g_LastDenied
 new g_FreeDay
+new g_BlockWeapons
  
 public plugin_init()
 {
@@ -157,12 +164,14 @@ public plugin_init()
 	g_MsgVGUIMenu = get_user_msgid("VGUIMenu")
 	g_MsgShowMenu = get_user_msgid("ShowMenu")
 	g_MsgMOTD = get_user_msgid("MOTD")
+	g_MsgClCorpse = get_user_msgid("ClCorpse")
 
 	register_message(g_MsgStatusText, "msg_statustext")
 	register_message(g_MsgStatusIcon, "msg_statusicon")
 	register_message(g_MsgVGUIMenu, "msg_vguimenu")
 	register_message(g_MsgShowMenu, "msg_showmenu")
 	register_message(g_MsgMOTD, "msg_motd")
+	register_message(g_MsgClCorpse, "msg_clcorpse")
 
 	register_event("CurWeapon", "current_weapon", "be", "1=1", "2=29")
 	register_event("DeathMsg","player_death","a")
@@ -209,7 +218,7 @@ public plugin_init()
 	register_clcmd("jbe_nomic", "adm_nomic", ADMIN_KICK)
 	register_clcmd("jbe_box", "adm_box", ADMIN_KICK)
  
-	gp_GlowModels = register_cvar("jbe_glowmodels", "1")
+	gp_GlowModels = register_cvar("jbe_glowmodels", "0")
 	gp_SimonSteps = register_cvar("jbe_simonsteps", "1")
 	gp_CrowbarMul = register_cvar("jbe_crowbarmultiplier", "25.0")
 	gp_CrowbarMax = register_cvar("jbe_maxcrowbar", "1")
@@ -245,15 +254,8 @@ public plugin_cfg()
 
 public plugin_precache()
 {
-	static i, model[64]
-	precache_model("models/player/straznik/straznik.mdl")
-	precache_model("models/player/leet_p2/leet_p2.mdl")
- 
-	for(i = 0; i < sizeof(_PrisonerModels); i++)
-	{
-		formatex(model, charsmax(model), "models/player/%s/%s.mdl", _PrisonerModels[i], _PrisonerModels[i])
-		precache_model(model)
-	}
+	static i
+	precache_model("models/player/jbemodel/jbemodel.mdl")
  
 	for(i = 0; i < sizeof(_FistModels); i++)
 		precache_model(_FistModels[i])
@@ -263,6 +265,9 @@ public plugin_precache()
  
 	for(i = 0; i < sizeof(_FistSounds); i++)
 		precache_sound(_FistSounds[i])
+
+	precache_sound("jbextreme/nm_goodbadugly.wav")
+	precache_sound("jbextreme/brass_bell_C.wav")
  
 	gp_PrecacheSpawn = register_forward(FM_Spawn, "precache_spawn", 1)
 }
@@ -396,6 +401,11 @@ public msg_motd(msgid, dest, id)
 	return PLUGIN_HANDLED
 }
 
+public msg_clcorpse(msgid, dest, id)
+{
+	return PLUGIN_HANDLED
+}
+
 public current_weapon(id)
 {
 	if(!is_user_alive(id))
@@ -430,6 +440,7 @@ public player_death(id)
 	if(vteam == CS_TEAM_CT && kteam == CS_TEAM_T && !get_bit(g_PlayerWanted, killer))
 	{
 		set_bit(g_PlayerWanted, killer)
+		entity_set_int(killer, EV_INT_skin, 4)
 		hud_status(0)
 	}
 
@@ -479,7 +490,6 @@ public player_spawn(id)
 		return HAM_IGNORED
 
 	set_user_rendering(id, kRenderFxNone, 0, 0, 0, kRenderNormal, 0)
-	player_strip_weapons(id)
 
 	clear_bit(g_PlayerCrowbar, id)
 	clear_bit(g_PlayerWanted, id)
@@ -496,7 +506,21 @@ public player_spawn(id)
 			player_hudmessage(id, 0, 5.0, {255, 0, 255}, "%L %L", LANG_SERVER, "JBE_PRISONER_REASON",
 				LANG_SERVER, g_Reasons[g_PlayerReason[id]])
 
-			set_user_info(id, "model", _PrisonerModels[g_PlayerModel[id]])
+			set_user_info(id, "model", "jbemodel")
+			entity_set_int(id, EV_INT_body, 2)
+			if(is_freeday() || get_bit(g_FreedayAuto, id))
+			{
+				freeday_set(0, id)
+				clear_bit(g_FreedayAuto, id)
+				entity_set_int(id, EV_INT_skin, 3)
+				if(get_pcvar_num(gp_GlowModels))
+					player_glow(id, g_Colors[1])
+			}
+			else
+			{
+				entity_set_int(id, EV_INT_skin, random_num(0, 2))
+			}
+
 			if(g_CrowbarCount < get_pcvar_num(gp_CrowbarMax))
 			{
 				if(random_num(0, g_MaxClients) > (g_MaxClients / 2))
@@ -509,10 +533,12 @@ public player_spawn(id)
 		}
 		case(CS_TEAM_CT):
 		{
-			set_user_info(id, "model", "straznik")
+			set_user_info(id, "model", "jbemodel")
+			entity_set_int(id, EV_INT_body, 3)
 			first_join(id)
 		}
 	}
+	player_strip_weapons(id)
 	return HAM_IGNORED
 }
 
@@ -679,12 +705,14 @@ public round_end()
 	g_BoxStarted = 0
 	g_CrowbarCount = 0
 	g_Simon = 0
+	g_SimonAllowed = 0
 	g_FreeDay = 0
 	g_RoundStarted = 0
-	g_LastRequest = 0
 	g_LastDenied = 0
+	g_BlockWeapons = 0
 	g_TeamCount[CS_TEAM_T] = 0
 	g_TeamCount[CS_TEAM_CT] = 0
+	g_FreedayNext = (random_num(1,80) >= 75)
 
 	remove_task(TASK_STATUS)
 	remove_task(TASK_FREEDAY)
@@ -695,6 +723,7 @@ public round_end()
 			continue
 
 		team = cs_get_user_team(i)
+		player_strip_weapons(i)
 		switch(team)
 		{
 			case(CS_TEAM_SPECTATOR):
@@ -710,19 +739,16 @@ public round_end()
 
 public round_start()
 {
-	static i
 	team_count()
 	g_JailDay++
-	if(!g_Simon && ((random_num(1,40) >= 35) || (g_JailDay == 1)))
-		g_FreeDay = 1
-
-	for(i = 1; i <= g_MaxClients; i++)
+	if(!g_Simon && is_freeday())
 	{
-		if(get_bit(g_AutoFreeday, i))
-			freeday_set(0, i)
+		g_FreeDay = 1
+		emit_sound(0, CHAN_AUTO, "jbextreme/brass_bell_C.wav", 1.0, ATTN_NORM, 0, PITCH_NORM)
 	}
 	set_task(2.0, "hud_status", TASK_STATUS, _, _, "b")
 	set_task(60.0, "check_freeday", TASK_FREEDAY)
+	g_SimonAllowed = 1
 }
 
 public cmd_jointeam(id)
@@ -759,11 +785,14 @@ public cmd_simon(id)
 {
 	static CsTeams:team, name[32]
 	team = cs_get_user_team(id)
-	if(!g_FreeDay && is_user_alive(id) && team == CS_TEAM_CT && !g_Simon)
+	if(g_SimonAllowed && !g_FreeDay && is_user_alive(id) && team == CS_TEAM_CT && !g_Simon)
 	{
 		g_Simon = id
 		get_user_name(id, name, charsmax(name))
-		player_glow(id, g_Colors[0])
+		entity_set_int(id, EV_INT_body, 1)
+		if(get_pcvar_num(gp_GlowModels))
+			player_glow(id, g_Colors[0])
+
 		hud_status(0)
 	}
 	return PLUGIN_HANDLED
@@ -852,7 +881,7 @@ public cmd_freeday(id)
 public cmd_lastrequest(id)
 {
 	static menu, menuname[32], option[64]
-	if(g_FreeDay || g_LastDenied || id != g_PlayerLast)
+	if(g_FreeDay || g_LastDenied || id != g_PlayerLast || get_bit(g_PlayerFreeday, id))
 		return PLUGIN_CONTINUE
 
 	formatex(menuname, charsmax(menuname), "%L", LANG_SERVER, "JBE_MENU_LASTREQ")
@@ -930,7 +959,6 @@ public team_select(id, key)
 				return PLUGIN_HANDLED
 
 			g_PlayerReason[id] = random_num(1, 6)
-			g_PlayerModel[id] = random_num(0, sizeof(_PrisonerModels) - 1)
 
 			team_join(id, CS_TEAM_T)
 		}
@@ -1017,7 +1045,9 @@ public team_count()
 	if(g_TeamAlive[CS_TEAM_T] == 1)
 	{
 		if(last != g_PlayerLast)
+		{
 			prisoner_last(last)
+		}
 	}
 	else
 	{
@@ -1162,29 +1192,32 @@ public lastrequest_select(id, menu, item)
 		case('1'):
 		{
 			formatex(option, charsmax(option), "%L", LANG_SERVER, "JBE_MENU_LASTREQ_SEL1", dst)
+			clear_bit(g_PlayerCrowbar, id)
+			player_strip_weapons_all()
+			g_BlockWeapons = 1
 		}
 		case('2'):
 		{
 			formatex(option, charsmax(option), "%L", LANG_SERVER, "JBE_MENU_LASTREQ_SEL2", dst)
+			emit_sound(0, CHAN_AUTO, "jbextreme/nm_goodbadugly.wav", 1.0, ATTN_NORM, 0, PITCH_NORM)
+			player_strip_weapons_all()
+			i = random_num(0, sizeof(_WeaponsGuns) - 1)
+			give_item(id, _WeaponsGuns[i])
+			g_BlockWeapons = 1
 		}
 		case('3'):
 		{
 			formatex(option, charsmax(option), "%L", LANG_SERVER, "JBE_MENU_LASTREQ_SEL3", dst)
-			for(i = 1; i <= g_MaxClients; i++)
-			{
-				if(is_user_alive(i))
-				{
-					player_strip_weapons(i)
-				}
-			}
+			player_strip_weapons_all()
 			i = random_num(0, sizeof(_WeaponsFree) - 1)
 			give_item(id, _WeaponsFree[i])
-			cs_set_user_bpammo(id, _WeaponsCSW[i], _WeaponsAmmo[i])
+			g_BlockWeapons = 1
+			cs_set_user_bpammo(id, _WeaponsFreeCSW[i], _WeaponsAmmo[i])
 		}
 		case('4'):
 		{
 			formatex(option, charsmax(option), "%L", LANG_SERVER, "JBE_MENU_LASTREQ_SEL4", dst)
-			set_bit(g_AutoFreeday, id)
+			set_bit(g_FreedayAuto, id)
 			user_silentkill(id)
 		}
 		default:
@@ -1202,21 +1235,20 @@ stock freeday_set(id, player)
 	static src[32], dst[32]
 	get_user_name(player, dst, charsmax(dst))
 
-	if(is_user_alive(player))
+	if(is_user_alive(player) && !get_bit(g_PlayerWanted, player))
 	{
-		set_bit(g_PlayerFreeday, player)
+		if(!is_freeday())
+			set_bit(g_PlayerFreeday, player)
+
 		if(0 < id <= g_MaxClients)
 		{
 			get_user_name(id, src, charsmax(src))
 			player_hudmessage(0, 6, 3.0, {0, 255, 0}, "%L", LANG_SERVER, "JBE_GUARD_FREEDAYGIVE", src, dst)
 		}
-		else
+		else if(!g_FreeDay)
 		{
 			player_hudmessage(0, 6, 3.0, {0, 255, 0}, "%L", LANG_SERVER, "JBE_PRISONER_HASFREEDAY", dst)
 		}
-		set_user_info(player, "model", "leet")
-		if(get_pcvar_num(gp_GlowModels))
-			player_glow(player, g_Colors[1])
 	}
 }
 
@@ -1284,4 +1316,20 @@ stock player_strip_weapons(id)
 	strip_user_weapons(id)
 	give_item(id, "weapon_knife")
 	set_pdata_int(id, m_iPrimaryWeapon, 0)
+}
+
+stock player_strip_weapons_all()
+{
+	for(new i = 1; i <= g_MaxClients; i++)
+	{
+		if(is_user_alive(i))
+		{
+			player_strip_weapons(i)
+		}
+	}
+}
+
+stock is_freeday()
+{
+	return (g_FreedayNext || g_FreeDay || (g_JailDay == 1))
 }
