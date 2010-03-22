@@ -39,6 +39,7 @@ v1.3
 #define TASK_FREEDAY	2487100
 #define TASK_ROUND	2487200
 #define TASK_HELP	2487300
+#define TASK_SAFETIME	2487400
 #define TEAM_MENU	"#Team_Select_Spect"
 #define TEAM_MENU2	"#Team_Select_Spect"
 
@@ -91,8 +92,8 @@ new const _RemoveEntities[][] = {
 
 new const _WeaponsFree[][] = { "weapon_scout", "weapon_deagle", "weapon_mac10", "weapon_elite", "weapon_ak47", "weapon_m4a1", "weapon_mp5navy" }
 new const _WeaponsFreeCSW[] = { CSW_SCOUT, CSW_DEAGLE, CSW_MAC10, CSW_ELITE, CSW_AK47, CSW_M4A1, CSW_MP5NAVY }
-new const _WeaponsGuns[][] = { "weapon_usp", "weapon_deagle", "weapon_glock", "weapon_elite", "weapon_p228", "weapon_fiveseven" }
-new const _WeaponsGunsCSW[] = { CSW_USP, CSW_DEAGLE, CSW_GLOCK, CSW_ELITE, CSW_P228, CSW_FIVESEVEN }
+new const _WeaponsGuns[][] = { "weapon_usp", "weapon_deagle", "weapon_glock18", "weapon_elite", "weapon_p228", "weapon_fiveseven" }
+new const _WeaponsGunsCSW[] = { CSW_USP, CSW_DEAGLE, CSW_GLOCK18, CSW_ELITE, CSW_P228, CSW_FIVESEVEN }
 new const _WeaponsAmmo[] = { 90, 35, 100, 120, 90, 90, 120 }
 
 // Reasons
@@ -106,7 +107,7 @@ new const g_Reasons[][] =  {
 	"JBE_PRISONER_REASON_6"
 }
 
-// HudSync: 0=ttinfo / 1=info / 2=simon / 3=ctinfo / 4=player / 5=day / 6=center / 7=help
+// HudSync: 0=ttinfo / 1=info / 2=simon / 3=ctinfo / 4=player / 5=day / 6=center / 7=help / 8=timer
 new const g_HudSync[][_hud] =
 {
 	{0,  0.6,  0.2,  2.0},
@@ -115,12 +116,13 @@ new const g_HudSync[][_hud] =
 	{0,  0.1,  0.3,  2.0},
 	{0, -1.0,  0.9,  3.0},
 	{0,  0.6,  0.1,  3.0},
-	{0, -1.0, -1.0,  3.0},
-	{0,  0.8,  0.3, 20.0}
+	{0, -1.0,  0.6,  3.0},
+	{0,  0.8,  0.3, 20.0},
+	{0, -1.0,  0.4,  3.0}
 }
 
 // Colors: 0:Simon / 1:Freeday / 2:CT Duel / 3:TT Duel
-new const g_Colors[][3] = { {0, 255, 0}, {255, 140, 0}, {255, 0, 0}, {0, 0, 255} }
+new const g_Colors[][3] = { {0, 255, 0}, {255, 140, 0}, {0, 0, 255}, {255, 0, 0} }
 
 
 new CsTeams:g_PlayerTeam[33]
@@ -147,8 +149,14 @@ new g_SimonTalking
 new g_SimonVoice
 new g_RoundStarted
 new g_LastDenied
-new g_FreeDay
+new g_Freeday
 new g_BlockWeapons
+new g_RoundEnd
+new g_Duel
+new g_DuelA
+new g_DuelB
+new g_DuelWeapon
+new g_SafeTime
  
 public plugin_init()
 {
@@ -185,10 +193,13 @@ public plugin_init()
 	RegisterHam(Ham_TraceAttack, "player", "player_attack")
 	RegisterHam(Ham_TraceAttack, "func_button", "button_attack")
 	RegisterHam(Ham_Killed, "player", "player_killed", 1)
+	RegisterHam(Ham_Touch, "weaponbox", "player_touchweapon")
+	RegisterHam(Ham_Touch, "armoury_entity", "player_touchweapon")
 
 	register_forward(FM_SetClientKeyValue, "set_client_kv")
 	register_forward(FM_EmitSound, "sound_emit")
 	register_forward(FM_Voice_SetClientListening, "voice_listening")
+	register_forward(FM_CmdStart, "player_cmdstart", 1)
 
 	register_logevent("round_end", 2, "1=Round_End")
 	register_logevent("round_first", 2, "0=World triggered", "1&Restart_Round_")
@@ -225,9 +236,9 @@ public plugin_init()
 	gp_TeamRatio = register_cvar("jbe_teamratio", "3")
 	gp_CtMax = register_cvar("jbe_maxct", "6")
 	gp_BoxMax = register_cvar("jbe_boxmax", "6")
-	gp_RetryTime = register_cvar("jbe_retrytime", "10")
+	gp_RetryTime = register_cvar("jbe_retrytime", "10.0")
 	gp_RoundMax = register_cvar("jbe_freedayround", "240.0")
-	gp_TalkMode = register_cvar("jbe_talkmode", "2")	// 0-alltak / 1-tt
+	gp_TalkMode = register_cvar("jbe_talkmode", "2")	// 0-alltak / 1-tt talk / 1-tt no talk
 	gp_VoiceBlock = register_cvar("jbe_blockvoice", "1")	// 0-dont block / 1-block voicerecord
 	gp_ButtonShoot = register_cvar("jbe_buttonshoot", "1")	// 0-standard / 1-func_button shoots!
  
@@ -385,7 +396,7 @@ public msg_showmenu(msgid, dest, id)
 	if(msgarg1 != 531)
 		return PLUGIN_CONTINUE
 
-	roundloop = get_pcvar_num(gp_RetryTime) / 2
+	roundloop = floatround(get_pcvar_float(gp_RetryTime) / 2)
 
 	if(is_user_alive(id) && !(g_RoundStarted >= roundloop) && (cs_get_user_team(id) == CS_TEAM_T))
 	{
@@ -437,12 +448,31 @@ public player_death(id)
 	kteam = cs_get_user_team(killer)
 	vteam = cs_get_user_team(victim)
 
-	if(vteam == CS_TEAM_CT && kteam == CS_TEAM_T && !get_bit(g_PlayerWanted, killer))
+	switch(g_Duel)
 	{
-		set_bit(g_PlayerWanted, killer)
-		entity_set_int(killer, EV_INT_skin, 4)
-		hud_status(0)
+		case(1,2):
+		{
+			if(killer == g_DuelA || killer == g_DuelB)
+			{
+				g_Duel = 0
+				g_LastDenied = 0
+				g_BlockWeapons = 0
+				prisoner_last(killer)
+			}
+			set_user_rendering(victim, kRenderFxNone, 0, 0, 0, kRenderNormal, 0)
+			set_user_rendering(killer, kRenderFxNone, 0, 0, 0, kRenderNormal, 0)
+		}
+		default:
+		{
+			if(vteam == CS_TEAM_CT && kteam == CS_TEAM_T && !get_bit(g_PlayerWanted, killer))
+			{
+				set_bit(g_PlayerWanted, killer)
+				entity_set_int(killer, EV_INT_skin, 4)
+				hud_status(0)
+			}
+		}
 	}
+
 
 	return PLUGIN_CONTINUE
 }
@@ -486,8 +516,15 @@ public player_spawn(id)
 {
 	static CsTeams:team
 
-	if(!is_user_alive(id))
+	if(!is_user_connected(id))
 		return HAM_IGNORED
+
+	player_strip_weapons(id)
+	if(g_RoundEnd)
+	{
+		g_RoundEnd = 0
+		g_JailDay++
+	}
 
 	set_user_rendering(id, kRenderFxNone, 0, 0, 0, kRenderNormal, 0)
 
@@ -512,9 +549,6 @@ public player_spawn(id)
 			{
 				freeday_set(0, id)
 				clear_bit(g_FreedayAuto, id)
-				entity_set_int(id, EV_INT_skin, 3)
-				if(get_pcvar_num(gp_GlowModels))
-					player_glow(id, g_Colors[1])
 			}
 			else
 			{
@@ -538,7 +572,6 @@ public player_spawn(id)
 			first_join(id)
 		}
 	}
-	player_strip_weapons(id)
 	return HAM_IGNORED
 }
 
@@ -547,10 +580,28 @@ public player_damage(victim, ent, attacker, Float:damage, bits)
 	if(!is_user_connected(victim) || !is_user_connected(attacker))
 		return HAM_IGNORED
 
-	if(get_user_weapon(attacker) == CSW_KNIFE && get_bit(g_PlayerCrowbar, attacker) && cs_get_user_team(victim) != CS_TEAM_T)
+	switch(g_Duel)
 	{
-		SetHamParamFloat(4, damage * get_pcvar_float(gp_CrowbarMul))
-		return HAM_OVERRIDE
+		case(1,2):
+		{
+			if((victim == g_DuelA && attacker == g_DuelB) || (victim == g_DuelB && attacker == g_DuelA))
+				return HAM_IGNORED
+	
+			return HAM_SUPERCEDE
+		}
+		case(3):
+		{
+			if(attacker != g_PlayerLast)
+				return HAM_SUPERCEDE
+		}
+		default:
+		{
+			if(get_user_weapon(attacker) == CSW_KNIFE && get_bit(g_PlayerCrowbar, attacker) && cs_get_user_team(victim) != CS_TEAM_T)
+			{
+				SetHamParamFloat(4, damage * get_pcvar_float(gp_CrowbarMul))
+				return HAM_OVERRIDE
+			}
+		}
 	}
 
 	return HAM_IGNORED
@@ -568,14 +619,32 @@ public player_attack(victim, attacker, Float:damage, Float:direction[3], traceha
 	if(ateam == CS_TEAM_CT && vteam == CS_TEAM_CT)
 		return HAM_SUPERCEDE
 
-	if(ateam == CS_TEAM_CT && vteam == CS_TEAM_T)
+	switch(g_Duel)
 	{
-		if(get_bit(g_PlayerRevolt, victim))
+		case(1,2):
 		{
-			clear_bit(g_PlayerRevolt, victim)
-			hud_status(0)
+			if((victim == g_DuelA && attacker == g_DuelB) || (victim == g_DuelB && attacker == g_DuelA))
+				return HAM_IGNORED
+
+			return HAM_SUPERCEDE
 		}
-		return HAM_IGNORED
+		case(3):
+		{
+			if(attacker != g_PlayerLast)
+				return HAM_SUPERCEDE
+		}
+		default:
+		{
+			if(ateam == CS_TEAM_CT && vteam == CS_TEAM_T)
+			{
+				if(get_bit(g_PlayerRevolt, victim))
+				{
+					clear_bit(g_PlayerRevolt, victim)
+					hud_status(0)
+				}
+				return HAM_IGNORED
+			}
+		}
 	}
 
 	if(ateam == CS_TEAM_T && vteam == CS_TEAM_T && !g_BoxStarted)
@@ -625,6 +694,14 @@ public player_killed(id)
 			clear_bit(g_PlayerWanted, id)
 		}
 	}
+}
+
+public player_touchweapon(id, ent)
+{
+	if(g_BlockWeapons)
+		return HAM_SUPERCEDE
+
+	return HAM_IGNORED
 }
 
 public set_client_kv(id, const info[], const key[])
@@ -687,7 +764,19 @@ public voice_listening(receiver, sender, bool:listen)
 	}
 	
  
-	return FMRES_IGNORED
+	engfunc(EngFunc_SetClientListening, receiver, sender, true)
+	return FMRES_SUPERCEDE
+}
+
+public player_cmdstart(id, uc, random)
+{
+	switch(g_Duel)
+	{
+		case(2):
+		{
+			cs_set_user_bpammo(id, _WeaponsGunsCSW[g_DuelWeapon], 1)
+		}
+	}
 }
 
 public round_first()
@@ -699,6 +788,7 @@ public round_first()
 public round_end()
 {
 	new CsTeams:team
+	g_SafeTime = 0
 	g_PlayerRevolt = 0
 	g_PlayerFreeday = 0
 	g_PlayerLast = 0
@@ -706,13 +796,15 @@ public round_end()
 	g_CrowbarCount = 0
 	g_Simon = 0
 	g_SimonAllowed = 0
-	g_FreeDay = 0
 	g_RoundStarted = 0
 	g_LastDenied = 0
 	g_BlockWeapons = 0
 	g_TeamCount[CS_TEAM_T] = 0
 	g_TeamCount[CS_TEAM_CT] = 0
-	g_FreedayNext = (random_num(1,80) >= 75)
+	g_Freeday = 0
+	g_FreedayNext = (random_num(0,99) >= 95)
+	g_RoundEnd = 1
+	g_Duel = 0
 
 	remove_task(TASK_STATUS)
 	remove_task(TASK_FREEDAY)
@@ -723,6 +815,7 @@ public round_end()
 			continue
 
 		team = cs_get_user_team(i)
+		cs_set_user_armor(i, 0, CS_ARMOR_NONE)
 		player_strip_weapons(i)
 		switch(team)
 		{
@@ -739,16 +832,20 @@ public round_end()
 
 public round_start()
 {
+	if(g_RoundEnd)
+		return
+
 	team_count()
-	g_JailDay++
 	if(!g_Simon && is_freeday())
 	{
-		g_FreeDay = 1
+		g_Freeday = 1
 		emit_sound(0, CHAN_AUTO, "jbextreme/brass_bell_C.wav", 1.0, ATTN_NORM, 0, PITCH_NORM)
 	}
 	set_task(2.0, "hud_status", TASK_STATUS, _, _, "b")
+	set_task(get_pcvar_float(gp_RetryTime) + 1.0, "safe_time", TASK_SAFETIME)
 	set_task(60.0, "check_freeday", TASK_FREEDAY)
 	g_SimonAllowed = 1
+	g_FreedayNext = 0
 }
 
 public cmd_jointeam(id)
@@ -785,7 +882,7 @@ public cmd_simon(id)
 {
 	static CsTeams:team, name[32]
 	team = cs_get_user_team(id)
-	if(g_SimonAllowed && !g_FreeDay && is_user_alive(id) && team == CS_TEAM_CT && !g_Simon)
+	if(g_SimonAllowed && !g_Freeday && is_user_alive(id) && team == CS_TEAM_CT && !g_Simon)
 	{
 		g_Simon = id
 		get_user_name(id, name, charsmax(name))
@@ -867,21 +964,16 @@ public cmd_help(id)
 
 public cmd_freeday(id)
 {
-	static menu, menuname[32]
 	if((is_user_alive(id) && cs_get_user_team(id) == CS_TEAM_CT) || is_user_admin(id))
-	{
-		formatex(menuname, charsmax(menuname), "%L", LANG_SERVER, "JBE_MENU_FREEDAY")
-		menu = menu_create(menuname, "freeday_select")
-		menu_addplayers(menu, CS_TEAM_T, id)
-		menu_display(id, menu)
-	}
+		menu_players(id, CS_TEAM_T, id, 1, "freeday_select", "%L", LANG_SERVER, "JBE_MENU_FREEDAY")
+
 	return PLUGIN_CONTINUE
 }
 
 public cmd_lastrequest(id)
 {
 	static menu, menuname[32], option[64]
-	if(g_FreeDay || g_LastDenied || id != g_PlayerLast || get_bit(g_PlayerFreeday, id))
+	if(g_Freeday || g_LastDenied || id != g_PlayerLast || get_bit(g_PlayerFreeday, id) || !is_user_alive(id))
 		return PLUGIN_CONTINUE
 
 	formatex(menuname, charsmax(menuname), "%L", LANG_SERVER, "JBE_MENU_LASTREQ")
@@ -1044,7 +1136,7 @@ public team_count()
 	}
 	if(g_TeamAlive[CS_TEAM_T] == 1)
 	{
-		if(last != g_PlayerLast)
+		if(last != g_PlayerLast && g_SafeTime)
 		{
 			prisoner_last(last)
 		}
@@ -1100,7 +1192,7 @@ public hud_status(task)
 		get_user_name(g_Simon, name, charsmax(name))
 		player_hudmessage(0, 2, 3.0, {0, 255, 0}, "%L", LANG_SERVER, "JBE_SIMON_FOLLOW", name)
 	}
-	else if(g_FreeDay)
+	else if(g_Freeday)
 	{
 		player_hudmessage(0, 2, 3.0, {0, 255, 0}, "%L", LANG_SERVER, "JBE_STATUS_FREEDAY")
 	}
@@ -1113,17 +1205,32 @@ public hud_status(task)
 	player_hudmessage(0, 5, 3.0, {0, 255, 0}, "%L", LANG_SERVER, "JBE_STATUS_DAY", g_JailDay)
 }
 
+public safe_time(task)
+{
+	g_SafeTime = 1
+}
+
 public check_freeday(task)
 {
-	static Float:roundmax
-	if(!g_Simon)
+	static Float:roundmax, i
+	if(!g_Simon && !g_PlayerLast)
 	{
-		g_FreeDay = 1
+		g_Freeday = 1
 		hud_status(0)
+		roundmax = get_pcvar_float(gp_RoundMax)
 		if(roundmax > 0.0)
+		{
+			for(i = 1; i <= g_MaxClients; i++)
+			{
+				if(is_user_alive(i) && cs_get_user_team(i) == CS_TEAM_T)
+					freeday_set(0, i)
+			}
+			emit_sound(0, CHAN_AUTO, "jbextreme/brass_bell_C.wav", 1.0, ATTN_NORM, 0, PITCH_NORM)
+			player_hudmessage(0, 8, 3.0, {0, 255, 0}, "%L", LANG_SERVER, "JBE_STATUS_ENDTIMER", floatround(roundmax - 60.0))
+			remove_task(TASK_ROUND)
 			set_task(roundmax - 60.0, "check_end", TASK_ROUND)
+		}
 	}
-	roundmax = get_pcvar_float(gp_RoundMax)
 }
 
 public check_end(task)
@@ -1154,8 +1261,11 @@ public prisoner_last(id)
 	if(is_user_alive(id) && cs_get_user_team(id) == CS_TEAM_T)
 	{
 		get_user_name(id, name, charsmax(name))
-		player_hudmessage(0, 6, 5.0, {0, 255, 0}, "%L", LANG_SERVER, "JBE_PRISONER_LAST", name)
 		g_PlayerLast = id
+		player_hudmessage(0, 6, 5.0, {0, 255, 0}, "%L", LANG_SERVER, "JBE_PRISONER_LAST", name)
+		player_hudmessage(0, 8, 3.0, {0, 255, 0}, "%L", LANG_SERVER, "JBE_STATUS_ENDTIMER", 120)
+		remove_task(TASK_ROUND)
+		set_task(120.0, "check_end", TASK_ROUND)
 	}
 }
 
@@ -1175,6 +1285,68 @@ public freeday_select(id, menu, item)
 	return PLUGIN_HANDLED
 }
 
+public duel_knives(id, menu, item)
+{
+	if(item == MENU_EXIT)
+	{
+		menu_destroy(menu)
+		g_LastDenied = 0
+		return PLUGIN_HANDLED
+	}
+
+	static dst[32], data[5], access, callback, option[128], player, src[32]
+
+	menu_item_getinfo(menu, item, access, data, charsmax(data), dst, charsmax(dst), callback)
+	get_user_name(id, src, charsmax(src))
+	player = str_to_num(data)
+	formatex(option, charsmax(option), "%L^n%L", LANG_SERVER, "JBE_MENU_LASTREQ_SEL1", src, LANG_SERVER, "JBE_MENU_DUEL_SEL", src, dst)
+	player_hudmessage(0, 6, 3.0, {0, 255, 0}, option)
+	g_DuelA = id
+	g_DuelB = player
+	g_Duel = 2
+	clear_bit(g_PlayerCrowbar, id)
+	player_strip_weapons(id)
+	player_strip_weapons(player)
+	player_glow(id, g_Colors[3])
+	player_glow(player, g_Colors[2])
+	g_BlockWeapons = 1
+	return PLUGIN_HANDLED
+}
+
+public duel_guns(id, menu, item)
+{
+	if(item == MENU_EXIT)
+	{
+		menu_destroy(menu)
+		g_LastDenied = 0
+		return PLUGIN_HANDLED
+	}
+
+	static gun, dst[32], data[5], access, callback, option[128], player, src[32]
+
+	menu_item_getinfo(menu, item, access, data, charsmax(data), dst, charsmax(dst), callback)
+	get_user_name(id, src, charsmax(src))
+	player = str_to_num(data)
+	formatex(option, charsmax(option), "%L^n%L", LANG_SERVER, "JBE_MENU_LASTREQ_SEL2", src, LANG_SERVER, "JBE_MENU_DUEL_SEL", src, dst)
+	emit_sound(0, CHAN_AUTO, "jbextreme/nm_goodbadugly.wav", 1.0, ATTN_NORM, 0, PITCH_NORM)
+	player_hudmessage(0, 6, 3.0, {0, 255, 0}, option)
+	g_DuelA = id
+	g_DuelB = player
+	g_Duel = 2
+	g_DuelWeapon = random_num(0, sizeof(_WeaponsGuns) - 1)
+	clear_bit(g_PlayerCrowbar, id)
+	player_strip_weapons(id)
+	player_strip_weapons(player)
+	gun = give_item(id, _WeaponsGuns[g_DuelWeapon])
+	cs_set_weapon_ammo(gun, 1)
+	gun = give_item(player, _WeaponsGuns[g_DuelWeapon])
+	cs_set_weapon_ammo(gun, 1)
+	player_glow(id, g_Colors[3])
+	player_glow(player, g_Colors[2])
+	g_BlockWeapons = 1
+	return PLUGIN_HANDLED
+}
+
 public lastrequest_select(id, menu, item)
 {
 	if(item == MENU_EXIT)
@@ -1191,23 +1363,17 @@ public lastrequest_select(id, menu, item)
 	{
 		case('1'):
 		{
-			formatex(option, charsmax(option), "%L", LANG_SERVER, "JBE_MENU_LASTREQ_SEL1", dst)
-			clear_bit(g_PlayerCrowbar, id)
-			player_strip_weapons_all()
-			g_BlockWeapons = 1
+			menu_players(id, CS_TEAM_CT, 0, 1, "duel_knives", "%L", LANG_SERVER, "JBE_MENU_DUEL")
 		}
 		case('2'):
 		{
-			formatex(option, charsmax(option), "%L", LANG_SERVER, "JBE_MENU_LASTREQ_SEL2", dst)
-			emit_sound(0, CHAN_AUTO, "jbextreme/nm_goodbadugly.wav", 1.0, ATTN_NORM, 0, PITCH_NORM)
-			player_strip_weapons_all()
-			i = random_num(0, sizeof(_WeaponsGuns) - 1)
-			give_item(id, _WeaponsGuns[i])
-			g_BlockWeapons = 1
+			menu_players(id, CS_TEAM_CT, 0, 1, "duel_guns", "%L", LANG_SERVER, "JBE_MENU_DUEL")
 		}
 		case('3'):
 		{
 			formatex(option, charsmax(option), "%L", LANG_SERVER, "JBE_MENU_LASTREQ_SEL3", dst)
+			player_hudmessage(0, 6, 3.0, {0, 255, 0}, option)
+			g_Duel = 3
 			player_strip_weapons_all()
 			i = random_num(0, sizeof(_WeaponsFree) - 1)
 			give_item(id, _WeaponsFree[i])
@@ -1217,6 +1383,7 @@ public lastrequest_select(id, menu, item)
 		case('4'):
 		{
 			formatex(option, charsmax(option), "%L", LANG_SERVER, "JBE_MENU_LASTREQ_SEL4", dst)
+			player_hudmessage(0, 6, 3.0, {0, 255, 0}, option)
 			set_bit(g_FreedayAuto, id)
 			user_silentkill(id)
 		}
@@ -1225,8 +1392,8 @@ public lastrequest_select(id, menu, item)
 			return PLUGIN_HANDLED
 		}
 	}
-	player_hudmessage(0, 6, 3.0, {0, 255, 0}, option)
 	g_LastDenied = 1
+	menu_destroy(menu)
 	return PLUGIN_HANDLED
 }
 
@@ -1237,15 +1404,17 @@ stock freeday_set(id, player)
 
 	if(is_user_alive(player) && !get_bit(g_PlayerWanted, player))
 	{
-		if(!is_freeday())
-			set_bit(g_PlayerFreeday, player)
+		set_bit(g_PlayerFreeday, player)
+		entity_set_int(player, EV_INT_skin, 3)
+		if(get_pcvar_num(gp_GlowModels))
+			player_glow(player, g_Colors[1])
 
 		if(0 < id <= g_MaxClients)
 		{
 			get_user_name(id, src, charsmax(src))
 			player_hudmessage(0, 6, 3.0, {0, 255, 0}, "%L", LANG_SERVER, "JBE_GUARD_FREEDAYGIVE", src, dst)
 		}
-		else if(!g_FreeDay)
+		else if(!is_freeday())
 		{
 			player_hudmessage(0, 6, 3.0, {0, 255, 0}, "%L", LANG_SERVER, "JBE_PRISONER_HASFREEDAY", dst)
 		}
@@ -1289,9 +1458,11 @@ stock player_hudmessage(id, hudid, Float:time = 0.0, color[3] = {0, 255, 0}, msg
 	ShowSyncHudMsg(id, g_HudSync[hudid][_hudsync], text)
 }
 
-stock menu_addplayers(menu, CsTeams:team, skip=0, alive=1)
+stock menu_players(id, CsTeams:team, skip, alive, callback[], title[], any:...)
 {
-	static i, name[32], id[5]
+	static i, name[32], num[5], menu, menuname[32]
+	vformat(menuname, charsmax(menuname), title, 7)
+	menu = menu_create(menuname, callback)
 	for(i = 1; i <= g_MaxClients; i++)
 	{
 		if(!is_user_connected(i) || (alive && !is_user_alive(i)) || (skip == i))
@@ -1300,10 +1471,11 @@ stock menu_addplayers(menu, CsTeams:team, skip=0, alive=1)
  		if(!(team == CS_TEAM_T || team == CS_TEAM_CT) || ((team == CS_TEAM_T || team == CS_TEAM_CT) && (cs_get_user_team(i) == team)))
 		{
 			get_user_name(i, name, charsmax(name))
-			num_to_str(i, id, charsmax(id))
-			menu_additem(menu, name, id, 0)
+			num_to_str(i, num, charsmax(num))
+			menu_additem(menu, name, num, 0)
 		}
 	}
+	menu_display(id, menu)
 }
 
 stock player_glow(id, color[3], amount=40)
@@ -1331,5 +1503,5 @@ stock player_strip_weapons_all()
 
 stock is_freeday()
 {
-	return (g_FreedayNext || g_FreeDay || (g_JailDay == 1))
+	return (g_FreedayNext || g_Freeday || (g_JailDay == 1))
 }
