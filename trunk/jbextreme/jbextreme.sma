@@ -17,6 +17,7 @@ v1.5
 	* Added cvar to force round end after some time of auto-freeday
 	* Added cvar to change game mode (classic counter for days)
 	* Added simon footsteps decals (controlled by cvar)
+	* Added restriction on HE for guards
 
 v1.3
 	* First public release
@@ -58,6 +59,7 @@ v1.3
  
 enum _hud { _hudsync, Float:_x, Float:_y, Float:_time }
 enum _lastrequest { _knife, _deagle, _freeday, _weapon }
+enum _duel { _name[16], _csw, _entname[32], _opt[32], _sel[32] }
 
 new gp_PrecacheSpawn
 new gp_CrowbarMax
@@ -72,6 +74,7 @@ new gp_RoundMax
 new gp_ButtonShoot
 new gp_SimonSteps
 new gp_GlowModels
+new gp_AutoLastresquest
 
 new g_MaxClients
 new g_MsgStatusText
@@ -92,9 +95,14 @@ new const _RemoveEntities[][] = {
 
 new const _WeaponsFree[][] = { "weapon_scout", "weapon_deagle", "weapon_mac10", "weapon_elite", "weapon_ak47", "weapon_m4a1", "weapon_mp5navy" }
 new const _WeaponsFreeCSW[] = { CSW_SCOUT, CSW_DEAGLE, CSW_MAC10, CSW_ELITE, CSW_AK47, CSW_M4A1, CSW_MP5NAVY }
-new const _WeaponsGuns[][] = { "weapon_usp", "weapon_deagle", "weapon_glock18", "weapon_elite", "weapon_p228", "weapon_fiveseven" }
-new const _WeaponsGunsCSW[] = { CSW_USP, CSW_DEAGLE, CSW_GLOCK18, CSW_ELITE, CSW_P228, CSW_FIVESEVEN }
-new const _WeaponsAmmo[] = { 90, 35, 100, 120, 90, 90, 120 }
+new const _WeaponsFreeAmmo[] = { 90, 35, 100, 120, 90, 90, 120 }
+
+new const _Duel[][_duel] =
+{
+	{ "Deagle", CSW_DEAGLE, "weapon_deagle", "JBE_MENU_LASTREQ_OPT4", "JBE_MENU_LASTREQ_SEL4" },
+	{ "Scout", CSW_SCOUT, "weapon_scout", "JBE_MENU_LASTREQ_OPT5", "JBE_MENU_LASTREQ_SEL5" },
+	{ "Grenades", CSW_HEGRENADE, "weapon_hegrenade", "JBE_MENU_LASTREQ_OPT6", "JBE_MENU_LASTREQ_SEL6" }
+}
 
 // Reasons
 new const g_Reasons[][] =  {
@@ -155,7 +163,6 @@ new g_RoundEnd
 new g_Duel
 new g_DuelA
 new g_DuelB
-new g_DuelWeapon
 new g_SafeTime
  
 public plugin_init()
@@ -193,6 +200,7 @@ public plugin_init()
 	RegisterHam(Ham_TraceAttack, "player", "player_attack")
 	RegisterHam(Ham_TraceAttack, "func_button", "button_attack")
 	RegisterHam(Ham_Killed, "player", "player_killed", 1)
+	RegisterHam(Ham_Touch, "weapon_hegrenade", "player_touchweapon")
 	RegisterHam(Ham_Touch, "weaponbox", "player_touchweapon")
 	RegisterHam(Ham_Touch, "armoury_entity", "player_touchweapon")
 
@@ -238,6 +246,7 @@ public plugin_init()
 	gp_BoxMax = register_cvar("jbe_boxmax", "6")
 	gp_RetryTime = register_cvar("jbe_retrytime", "10.0")
 	gp_RoundMax = register_cvar("jbe_freedayround", "240.0")
+	gp_AutoLastresquest = register_cvar("jbe_autolastrequest", "1")
 	gp_TalkMode = register_cvar("jbe_talkmode", "2")	// 0-alltak / 1-tt talk / 1-tt no talk
 	gp_VoiceBlock = register_cvar("jbe_blockvoice", "1")	// 0-dont block / 1-block voicerecord
 	gp_ButtonShoot = register_cvar("jbe_buttonshoot", "1")	// 0-standard / 1-func_button shoots!
@@ -313,6 +322,12 @@ public client_disconnect(id)
 		g_Simon = 0
 		ClearSyncHud(0, g_HudSync[2][_hudsync])
 		player_hudmessage(0, 2, 5.0, _, "%L", LANG_SERVER, "JBE_SIMON_HASGONE")
+	}
+	else if(g_Duel && (id == g_DuelA || id == g_DuelB))
+	{
+		g_Duel = 0
+		g_LastDenied = 0
+		g_BlockWeapons = 0
 	}
 	team_count()
 }
@@ -450,7 +465,16 @@ public player_death(id)
 
 	switch(g_Duel)
 	{
-		case(1,2):
+		case(0):
+		{
+			if(vteam == CS_TEAM_CT && kteam == CS_TEAM_T && !get_bit(g_PlayerWanted, killer))
+			{
+				set_bit(g_PlayerWanted, killer)
+				entity_set_int(killer, EV_INT_skin, 4)
+				hud_status(0)
+			}
+		}
+		default:
 		{
 			if(killer == g_DuelA || killer == g_DuelB)
 			{
@@ -461,15 +485,6 @@ public player_death(id)
 			}
 			set_user_rendering(victim, kRenderFxNone, 0, 0, 0, kRenderNormal, 0)
 			set_user_rendering(killer, kRenderFxNone, 0, 0, 0, kRenderNormal, 0)
-		}
-		default:
-		{
-			if(vteam == CS_TEAM_CT && kteam == CS_TEAM_T && !get_bit(g_PlayerWanted, killer))
-			{
-				set_bit(g_PlayerWanted, killer)
-				entity_set_int(killer, EV_INT_skin, 4)
-				hud_status(0)
-			}
 		}
 	}
 
@@ -577,30 +592,30 @@ public player_spawn(id)
 
 public player_damage(victim, ent, attacker, Float:damage, bits)
 {
-	if(!is_user_connected(victim) || !is_user_connected(attacker))
+	if(!is_user_connected(victim) || !is_user_connected(attacker) || victim == attacker)
 		return HAM_IGNORED
 
 	switch(g_Duel)
 	{
-		case(1,2):
-		{
-			if((victim == g_DuelA && attacker == g_DuelB) || (victim == g_DuelB && attacker == g_DuelA))
-				return HAM_IGNORED
-	
-			return HAM_SUPERCEDE
-		}
-		case(3):
-		{
-			if(attacker != g_PlayerLast)
-				return HAM_SUPERCEDE
-		}
-		default:
+		case(0):
 		{
 			if(get_user_weapon(attacker) == CSW_KNIFE && get_bit(g_PlayerCrowbar, attacker) && cs_get_user_team(victim) != CS_TEAM_T)
 			{
 				SetHamParamFloat(4, damage * get_pcvar_float(gp_CrowbarMul))
 				return HAM_OVERRIDE
 			}
+		}
+		case(2):
+		{
+			if(attacker != g_PlayerLast)
+				return HAM_SUPERCEDE
+		}
+		default:
+		{
+			if((victim == g_DuelA && attacker == g_DuelB) || (victim == g_DuelB && attacker == g_DuelA))
+				return HAM_IGNORED
+	
+			return HAM_SUPERCEDE
 		}
 	}
 
@@ -610,7 +625,7 @@ public player_damage(victim, ent, attacker, Float:damage, bits)
 public player_attack(victim, attacker, Float:damage, Float:direction[3], tracehandle, damagebits)
 {
 	static CsTeams:vteam, CsTeams:ateam
-	if(!is_user_connected(victim) || !is_user_connected(attacker))
+	if(!is_user_connected(victim) || !is_user_connected(attacker) || victim == attacker)
 		return HAM_IGNORED
 
 	vteam = cs_get_user_team(victim)
@@ -621,19 +636,7 @@ public player_attack(victim, attacker, Float:damage, Float:direction[3], traceha
 
 	switch(g_Duel)
 	{
-		case(1,2):
-		{
-			if((victim == g_DuelA && attacker == g_DuelB) || (victim == g_DuelB && attacker == g_DuelA))
-				return HAM_IGNORED
-
-			return HAM_SUPERCEDE
-		}
-		case(3):
-		{
-			if(attacker != g_PlayerLast)
-				return HAM_SUPERCEDE
-		}
-		default:
+		case(0):
 		{
 			if(ateam == CS_TEAM_CT && vteam == CS_TEAM_T)
 			{
@@ -644,6 +647,18 @@ public player_attack(victim, attacker, Float:damage, Float:direction[3], traceha
 				}
 				return HAM_IGNORED
 			}
+		}
+		case(2):
+		{
+			if(attacker != g_PlayerLast)
+				return HAM_SUPERCEDE
+		}
+		default:
+		{
+			if((victim == g_DuelA && attacker == g_DuelB) || (victim == g_DuelB && attacker == g_DuelA))
+				return HAM_IGNORED
+
+			return HAM_SUPERCEDE
 		}
 	}
 
@@ -698,8 +713,23 @@ public player_killed(id)
 
 public player_touchweapon(id, ent)
 {
+	static model[32], class[32]
 	if(g_BlockWeapons)
 		return HAM_SUPERCEDE
+
+	if(is_valid_ent(id) && is_user_alive(ent) && cs_get_user_team(ent) == CS_TEAM_CT)
+	{
+		entity_get_string(id, EV_SZ_model, model, charsmax(model))
+		if(model[7] == 'w' && model[9] == 'h' && model[10] == 'e' && model[11] == 'g')
+		{
+			entity_get_string(id, EV_SZ_classname, class, charsmax(class))
+			if(equal(class, "weapon_hegrenade"))
+				remove_entity(id)
+
+			return HAM_SUPERCEDE
+		}
+
+	}
 
 	return HAM_IGNORED
 }
@@ -770,12 +800,9 @@ public voice_listening(receiver, sender, bool:listen)
 
 public player_cmdstart(id, uc, random)
 {
-	switch(g_Duel)
+	if(g_Duel > 3)
 	{
-		case(2):
-		{
-			cs_set_user_bpammo(id, _WeaponsGunsCSW[g_DuelWeapon], 1)
-		}
+		cs_set_user_bpammo(id, _Duel[g_Duel - 4][_csw], 1)
 	}
 }
 
@@ -972,7 +999,7 @@ public cmd_freeday(id)
 
 public cmd_lastrequest(id)
 {
-	static menu, menuname[32], option[64]
+	static i, num[5], menu, menuname[32], option[64]
 	if(g_Freeday || g_LastDenied || id != g_PlayerLast || get_bit(g_PlayerFreeday, id) || !is_user_alive(id))
 		return PLUGIN_CONTINUE
 
@@ -988,8 +1015,12 @@ public cmd_lastrequest(id)
 	formatex(option, charsmax(option), "%L", LANG_SERVER, "JBE_MENU_LASTREQ_OPT3")
 	menu_additem(menu, option, "3", 0)
 
-	formatex(option, charsmax(option), "%L", LANG_SERVER, "JBE_MENU_LASTREQ_OPT4")
-	menu_additem(menu, option, "4", 0)
+	for(i = 0; i < sizeof(_Duel); i++)
+	{
+		num_to_str(i + 4, num, charsmax(num))
+		formatex(option, charsmax(option), "%L", LANG_SERVER, _Duel[i][_opt])
+		menu_additem(menu, option, num, 0)
+	}
 
 	menu_display(id, menu)
 	return PLUGIN_CONTINUE
@@ -1266,6 +1297,8 @@ public prisoner_last(id)
 		player_hudmessage(0, 8, 3.0, {0, 255, 0}, "%L", LANG_SERVER, "JBE_STATUS_ENDTIMER", 120)
 		remove_task(TASK_ROUND)
 		set_task(120.0, "check_end", TASK_ROUND)
+		if(get_pcvar_num(gp_AutoLastresquest))
+			cmd_lastrequest(id)
 	}
 }
 
@@ -1303,7 +1336,6 @@ public duel_knives(id, menu, item)
 	player_hudmessage(0, 6, 3.0, {0, 255, 0}, option)
 	g_DuelA = id
 	g_DuelB = player
-	g_Duel = 2
 	clear_bit(g_PlayerCrowbar, id)
 	player_strip_weapons(id)
 	player_strip_weapons(player)
@@ -1319,6 +1351,7 @@ public duel_guns(id, menu, item)
 	{
 		menu_destroy(menu)
 		g_LastDenied = 0
+		g_Duel = 0
 		return PLUGIN_HANDLED
 	}
 
@@ -1327,19 +1360,17 @@ public duel_guns(id, menu, item)
 	menu_item_getinfo(menu, item, access, data, charsmax(data), dst, charsmax(dst), callback)
 	get_user_name(id, src, charsmax(src))
 	player = str_to_num(data)
-	formatex(option, charsmax(option), "%L^n%L", LANG_SERVER, "JBE_MENU_LASTREQ_SEL2", src, LANG_SERVER, "JBE_MENU_DUEL_SEL", src, dst)
+	formatex(option, charsmax(option), "%L^n%L", LANG_SERVER, _Duel[g_Duel - 4][_sel], src, LANG_SERVER, "JBE_MENU_DUEL_SEL", src, dst)
 	emit_sound(0, CHAN_AUTO, "jbextreme/nm_goodbadugly.wav", 1.0, ATTN_NORM, 0, PITCH_NORM)
 	player_hudmessage(0, 6, 3.0, {0, 255, 0}, option)
 	g_DuelA = id
 	g_DuelB = player
-	g_Duel = 2
-	g_DuelWeapon = random_num(0, sizeof(_WeaponsGuns) - 1)
 	clear_bit(g_PlayerCrowbar, id)
 	player_strip_weapons(id)
 	player_strip_weapons(player)
-	gun = give_item(id, _WeaponsGuns[g_DuelWeapon])
+	gun = give_item(id, _Duel[g_Duel - 4][_entname])
 	cs_set_weapon_ammo(gun, 1)
-	gun = give_item(player, _WeaponsGuns[g_DuelWeapon])
+	gun = give_item(player, _Duel[g_Duel - 4][_entname])
 	cs_set_weapon_ammo(gun, 1)
 	player_glow(id, g_Colors[3])
 	player_glow(player, g_Colors[2])
@@ -1363,33 +1394,31 @@ public lastrequest_select(id, menu, item)
 	{
 		case('1'):
 		{
-			menu_players(id, CS_TEAM_CT, 0, 1, "duel_knives", "%L", LANG_SERVER, "JBE_MENU_DUEL")
-		}
-		case('2'):
-		{
-			menu_players(id, CS_TEAM_CT, 0, 1, "duel_guns", "%L", LANG_SERVER, "JBE_MENU_DUEL")
-		}
-		case('3'):
-		{
-			formatex(option, charsmax(option), "%L", LANG_SERVER, "JBE_MENU_LASTREQ_SEL3", dst)
-			player_hudmessage(0, 6, 3.0, {0, 255, 0}, option)
-			g_Duel = 3
-			player_strip_weapons_all()
-			i = random_num(0, sizeof(_WeaponsFree) - 1)
-			give_item(id, _WeaponsFree[i])
-			g_BlockWeapons = 1
-			cs_set_user_bpammo(id, _WeaponsFreeCSW[i], _WeaponsAmmo[i])
-		}
-		case('4'):
-		{
-			formatex(option, charsmax(option), "%L", LANG_SERVER, "JBE_MENU_LASTREQ_SEL4", dst)
+			formatex(option, charsmax(option), "%L", LANG_SERVER, "JBE_MENU_LASTREQ_SEL1", dst)
 			player_hudmessage(0, 6, 3.0, {0, 255, 0}, option)
 			set_bit(g_FreedayAuto, id)
 			user_silentkill(id)
 		}
+		case('2'):
+		{
+			formatex(option, charsmax(option), "%L", LANG_SERVER, "JBE_MENU_LASTREQ_SEL2", dst)
+			player_hudmessage(0, 6, 3.0, {0, 255, 0}, option)
+			g_Duel = 2
+			player_strip_weapons_all()
+			i = random_num(0, sizeof(_WeaponsFree) - 1)
+			give_item(id, _WeaponsFree[i])
+			g_BlockWeapons = 1
+			cs_set_user_bpammo(id, _WeaponsFreeCSW[i], _WeaponsFreeAmmo[i])
+		}
+		case('3'):
+		{
+			g_Duel = 3
+			menu_players(id, CS_TEAM_CT, 0, 1, "duel_knives", "%L", LANG_SERVER, "JBE_MENU_DUEL")
+		}
 		default:
 		{
-			return PLUGIN_HANDLED
+			g_Duel = str_to_num(data)
+			menu_players(id, CS_TEAM_CT, 0, 1, "duel_guns", "%L", LANG_SERVER, "JBE_MENU_DUEL")
 		}
 	}
 	g_LastDenied = 1
