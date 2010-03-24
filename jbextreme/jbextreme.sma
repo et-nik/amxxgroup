@@ -266,6 +266,7 @@ public plugin_init()
 public plugin_cfg()
 {
 	set_cvar_num("sv_alltalk", 1)
+	set_cvar_num("mp_roundtime", 2)
 	set_cvar_num("mp_limitteams", 0)
 	set_cvar_num("mp_autoteambalance", 0)
 	set_cvar_num("mp_tkpunish", 0)
@@ -323,11 +324,14 @@ public client_disconnect(id)
 		ClearSyncHud(0, g_HudSync[2][_hudsync])
 		player_hudmessage(0, 2, 5.0, _, "%L", LANG_SERVER, "JBE_SIMON_HASGONE")
 	}
-	else if(g_Duel && (id == g_DuelA || id == g_DuelB))
+	else if(g_PlayerLast == id || (g_Duel && (id == g_DuelA || id == g_DuelB)))
 	{
 		g_Duel = 0
+		g_DuelA = 0
+		g_DuelB = 0
 		g_LastDenied = 0
 		g_BlockWeapons = 0
+		g_PlayerLast = 0
 	}
 	team_count()
 }
@@ -991,6 +995,25 @@ public cmd_help(id)
 
 public cmd_freeday(id)
 {
+	static menu, menuname[32], option[64]
+	if(!is_freeday() && ((is_user_alive(id) && cs_get_user_team(id) == CS_TEAM_CT) || is_user_admin(id)))
+	{
+		formatex(menuname, charsmax(menuname), "%L", LANG_SERVER, "JBE_MENU_FREEDAY")
+		menu = menu_create(menuname, "freeday_choice")
+
+		formatex(option, charsmax(option), "%L", LANG_SERVER, "JBE_MENU_FREEDAY_PLAYER")
+		menu_additem(menu, option, "1", 0)
+
+		formatex(option, charsmax(option), "%L", LANG_SERVER, "JBE_MENU_FREEDAY_ALL")
+		menu_additem(menu, option, "2", 0)
+
+		menu_display(id, menu)
+	}
+	return PLUGIN_HANDLED
+}
+
+public cmd_freeday_player(id)
+{
 	if((is_user_alive(id) && cs_get_user_team(id) == CS_TEAM_CT) || is_user_admin(id))
 		menu_players(id, CS_TEAM_T, id, 1, "freeday_select", "%L", LANG_SERVER, "JBE_MENU_FREEDAY")
 
@@ -1174,7 +1197,25 @@ public team_count()
 	}
 	else
 	{
+		if(g_Duel || g_DuelA || g_DuelB)
+		{
+			if(is_user_alive(g_DuelA))
+			{
+				set_user_rendering(g_DuelA, kRenderFxNone, 0, 0, 0, kRenderNormal, 0)
+				player_strip_weapons(g_DuelA)
+			}
+
+			if(is_user_alive(g_DuelB))
+			{
+				set_user_rendering(g_DuelB, kRenderFxNone, 0, 0, 0, kRenderNormal, 0)
+				player_strip_weapons(g_DuelB)
+			}
+
+		}
 		g_PlayerLast = 0
+		g_DuelA = 0
+		g_DuelB = 0
+		g_Duel = 0
 	}
 }
 
@@ -1334,13 +1375,17 @@ public duel_knives(id, menu, item)
 	player = str_to_num(data)
 	formatex(option, charsmax(option), "%L^n%L", LANG_SERVER, "JBE_MENU_LASTREQ_SEL1", src, LANG_SERVER, "JBE_MENU_DUEL_SEL", src, dst)
 	player_hudmessage(0, 6, 3.0, {0, 255, 0}, option)
+
 	g_DuelA = id
-	g_DuelB = player
 	clear_bit(g_PlayerCrowbar, id)
 	player_strip_weapons(id)
-	player_strip_weapons(player)
 	player_glow(id, g_Colors[3])
+	set_user_health(id, 100)
+
+	g_DuelB = player
+	player_strip_weapons(player)
 	player_glow(player, g_Colors[2])
+	set_user_health(player, 100)
 	g_BlockWeapons = 1
 	return PLUGIN_HANDLED
 }
@@ -1363,18 +1408,50 @@ public duel_guns(id, menu, item)
 	formatex(option, charsmax(option), "%L^n%L", LANG_SERVER, _Duel[g_Duel - 4][_sel], src, LANG_SERVER, "JBE_MENU_DUEL_SEL", src, dst)
 	emit_sound(0, CHAN_AUTO, "jbextreme/nm_goodbadugly.wav", 1.0, ATTN_NORM, 0, PITCH_NORM)
 	player_hudmessage(0, 6, 3.0, {0, 255, 0}, option)
+
 	g_DuelA = id
-	g_DuelB = player
 	clear_bit(g_PlayerCrowbar, id)
 	player_strip_weapons(id)
-	player_strip_weapons(player)
 	gun = give_item(id, _Duel[g_Duel - 4][_entname])
 	cs_set_weapon_ammo(gun, 1)
+	set_user_health(id, 100)
+	player_glow(id, g_Colors[3])
+
+	g_DuelB = player
+	player_strip_weapons(player)
 	gun = give_item(player, _Duel[g_Duel - 4][_entname])
 	cs_set_weapon_ammo(gun, 1)
-	player_glow(id, g_Colors[3])
+	set_user_health(player, 100)
 	player_glow(player, g_Colors[2])
+
 	g_BlockWeapons = 1
+	return PLUGIN_HANDLED
+}
+
+public freeday_choice(id, menu, item)
+{
+	if(item == MENU_EXIT)
+	{
+		menu_destroy(menu)
+		return PLUGIN_HANDLED
+	}
+
+	static dst[32], data[5], access, callback
+
+	menu_item_getinfo(menu, item, access, data, charsmax(data), dst, charsmax(dst), callback)
+	menu_destroy(menu)
+	get_user_name(id, dst, charsmax(dst))
+	switch(data[0])
+	{
+		case('1'):
+		{
+			cmd_freeday_player(id)
+		}
+		case('2'):
+		{
+			check_freeday(TASK_FREEDAY)
+		}
+	}
 	return PLUGIN_HANDLED
 }
 
