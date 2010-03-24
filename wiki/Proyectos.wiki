@@ -11,6 +11,7 @@ Proyects list
   * [multic4 Multi C4 Manager]
   * [closeyoureyes Close Your Eyes] *done* / *released*
   * [nospeedhack No SpeedHack] *done*
+  * [hatsgame Hats Game]
 
 = Utilities =
   * [svcstocks TEMPENTITY Stocks]
