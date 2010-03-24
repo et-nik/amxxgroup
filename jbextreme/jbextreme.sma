@@ -721,7 +721,7 @@ public player_touchweapon(id, ent)
 	if(g_BlockWeapons)
 		return HAM_SUPERCEDE
 
-	if(is_valid_ent(id) && is_user_alive(ent) && cs_get_user_team(ent) == CS_TEAM_CT)
+	if(is_valid_ent(id) && g_Duel != 6 && is_user_alive(ent) && cs_get_user_team(ent) == CS_TEAM_CT)
 	{
 		entity_get_string(id, EV_SZ_model, model, charsmax(model))
 		if(model[7] == 'w' && model[9] == 'h' && model[10] == 'e' && model[11] == 'g')
