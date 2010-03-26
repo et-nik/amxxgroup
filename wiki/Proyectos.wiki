@@ -29,4 +29,4 @@ Proyects list
   * [bugs Bugs!]
   * [ghostsmod Ghosts]
   * [kidsmod Kids Mod]
-  * [jbextreme JailBreak Extreme]
+  * [jbextreme JailBreak Extreme] *dont* / *released*
