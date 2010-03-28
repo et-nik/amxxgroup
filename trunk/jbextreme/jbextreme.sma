@@ -34,16 +34,17 @@ v1.3
 #include <fun>
 #include <cstrike>
  
-#define	PLUGIN_NAME	"JailBreak Extreme"
-#define	PLUGIN_AUTHOR	"JoRoPiTo"
-#define	PLUGIN_VERSION	"1.6"
-#define	PLUGIN_CVAR	"jbextreme"
+#define PLUGIN_NAME	"JailBreak Extreme"
+#define PLUGIN_AUTHOR	"JoRoPiTo"
+#define PLUGIN_VERSION	"1.6"
+#define PLUGIN_CVAR	"jbextreme"
 
 #define TASK_STATUS	2487000
 #define TASK_FREEDAY	2487100
 #define TASK_ROUND	2487200
-#define TASK_HELP	2487300
+#define TASK_HELP		2487300
 #define TASK_SAFETIME	2487400
+#define TASK_FREEEND	2487500
 #define TEAM_MENU	"#Team_Select_Spect"
 #define TEAM_MENU2	"#Team_Select_Spect"
 
@@ -702,8 +703,12 @@ public button_attack(button, id, Float:damage, Float:direction[3], tracehandle, 
 public player_killed(victim, attacker, shouldgib)
 {
 	static CsTeams:vteam, CsTeams:kteam
+	if(!(0 < attacker <= g_MaxClients) || !is_user_connected(attacker))
+		kteam = CS_TEAM_UNASSIGNED
+	else
+		kteam = cs_get_user_team(attacker)
+
 	vteam = cs_get_user_team(victim)
-	kteam = cs_get_user_team(attacker)
 	team_count()
 	switch(g_Duel)
 	{
@@ -747,6 +752,7 @@ public player_killed(victim, attacker, shouldgib)
 		}
 	}
 	hud_status(0)
+	return HAM_IGNORED
 }
 
 public player_touchweapon(id, ent)
@@ -876,6 +882,7 @@ public round_end()
 
 	remove_task(TASK_STATUS)
 	remove_task(TASK_FREEDAY)
+	remove_task(TASK_FREEEND)
 	remove_task(TASK_ROUND)
 	for(new i = 1; i <= g_MaxClients; i++)
 	{
@@ -894,8 +901,9 @@ public round_end()
 					cmd_nomic(i)
 				}
 			}
-			case(CS_TEAM_SPECTATOR):
+			case(CS_TEAM_SPECTATOR,CS_TEAM_UNASSIGNED):
 			{
+				g_PlayerSpect[i]++
 				if(g_PlayerSpect[i] > get_pcvar_num(gp_SpectRounds))
 				{
 					client_cmd(i, "disconnect")
@@ -927,6 +935,7 @@ public round_start()
 	set_task(2.0, "hud_status", TASK_STATUS, _, _, "b")
 	set_task(get_pcvar_float(gp_RetryTime) + 1.0, "safe_time", TASK_SAFETIME)
 	set_task(60.0, "check_freeday", TASK_FREEDAY)
+	set_task(120.0, "freeday_end", TASK_FREEDAY)
 	g_SimonAllowed = 1
 	g_FreedayNext = 0
 }
@@ -1190,24 +1199,28 @@ public team_join(id, CsTeams:team)
 	if(vgui)
 		set_pdata_int(id, m_iVGUI, restore & ~(1<<0))
 
-	if(team == CS_TEAM_SPECTATOR)
+	switch(team)
 	{
-		msgblock = get_msg_block(g_MsgShowMenu)
-		set_msg_block(g_MsgShowMenu, BLOCK_ONCE)
-		dllfunc(DLLFunc_ClientPutInServer, id)
-		set_msg_block(g_MsgShowMenu, msgblock)
-		set_pdata_int(id, m_fGameHUDInitialized, 1)
-		engclient_cmd(id, "jointeam", "6")
-		g_PlayerSpect[id]++
-	}
-	else
-	{
-		msgblock = get_msg_block(g_MsgShowMenu)
-		set_msg_block(g_MsgShowMenu, BLOCK_ONCE)
-		engclient_cmd(id, "jointeam", (team == CS_TEAM_CT) ? "2" : "1")
-		engclient_cmd(id, "joinclass", "1")
-		set_msg_block(g_MsgShowMenu, msgblock)
-		g_PlayerSpect[id] = 0
+		case CS_TEAM_SPECTATOR:
+		{
+			msgblock = get_msg_block(g_MsgShowMenu)
+			set_msg_block(g_MsgShowMenu, BLOCK_ONCE)
+			dllfunc(DLLFunc_ClientPutInServer, id)
+			set_msg_block(g_MsgShowMenu, msgblock)
+			set_pdata_int(id, m_fGameHUDInitialized, 1)
+			engclient_cmd(id, "jointeam", "6")
+		}
+		case CS_TEAM_T, CS_TEAM_CT:
+		{
+		server_print("join %i %i %s", id, team, (team == CS_TEAM_CT) ? "2" : "1")
+
+			msgblock = get_msg_block(g_MsgShowMenu)
+			set_msg_block(g_MsgShowMenu, BLOCK_ONCE)
+			engclient_cmd(id, "jointeam", (team == CS_TEAM_CT) ? "2" : "1")
+			engclient_cmd(id, "joinclass", "1")
+			set_msg_block(g_MsgShowMenu, msgblock)
+			g_PlayerSpect[id] = 0
+		}
 	}
 	
 	if(vgui)
@@ -1361,6 +1374,15 @@ public check_freeday(task)
 	}
 }
 
+public freeday_end(task)
+{
+	if(g_Freeday || g_PlayerFreeday)
+	{
+		emit_sound(0, CHAN_AUTO, "jbextreme/brass_bell_C.wav", 1.0, ATTN_NORM, 0, PITCH_NORM)
+		player_hudmessage(0, 8, 3.0, {0, 255, 0}, "%L", LANG_SERVER, "JBE_STATUS_ENDFREEDAY")
+	}
+}
+
 public check_end(task)
 {
 	team_count()
@@ -1385,15 +1407,19 @@ public check_end(task)
 
 public prisoner_last(id)
 {
-	static name[32]
+	static name[32], Float:roundmax
 	if(is_user_alive(id) && cs_get_user_team(id) == CS_TEAM_T)
 	{
+		roundmax = get_pcvar_float(gp_RoundMax)
 		get_user_name(id, name, charsmax(name))
 		g_PlayerLast = id
 		player_hudmessage(0, 6, 5.0, {0, 255, 0}, "%L", LANG_SERVER, "JBE_PRISONER_LAST", name)
-		player_hudmessage(0, 8, 3.0, {0, 255, 0}, "%L", LANG_SERVER, "JBE_STATUS_ENDTIMER", 120)
 		remove_task(TASK_ROUND)
-		set_task(120.0, "check_end", TASK_ROUND)
+		if(roundmax > 0.0)
+		{
+			player_hudmessage(0, 8, 3.0, {0, 255, 0}, "%L", LANG_SERVER, "JBE_STATUS_ENDTIMER", floatround(roundmax - 60.0))
+			set_task(roundmax - 60.0, "check_end", TASK_ROUND)
+		}
 		if(get_pcvar_num(gp_AutoLastresquest))
 			cmd_lastrequest(id)
 	}

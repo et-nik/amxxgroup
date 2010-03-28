@@ -1,6 +1,6 @@
 #include <amxmodx>
  
-#define	PLUGIN_NAME	"JailBreak Extreme Tanslations"
+#define	PLUGIN_NAME	"JailBreak Extreme Translations"
 #define	PLUGIN_AUTHOR	"JoRoPiTo"
 #define	PLUGIN_VERSION	"1.5"
 #define	PLUGIN_CVAR	"jbe_es"
