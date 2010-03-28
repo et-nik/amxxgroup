@@ -1,6 +1,9 @@
 /*
 Changelog:
 
+v1.6
+	* Fixed last request abuse bug
+
 v1.5
 	* Improved team select code
 	* Improved team status code
@@ -33,7 +36,7 @@ v1.3
  
 #define	PLUGIN_NAME	"JailBreak Extreme"
 #define	PLUGIN_AUTHOR	"JoRoPiTo"
-#define	PLUGIN_VERSION	"1.5"
+#define	PLUGIN_VERSION	"1.6"
 #define	PLUGIN_CVAR	"jbextreme"
 
 #define TASK_STATUS	2487000
@@ -75,6 +78,7 @@ new gp_ButtonShoot
 new gp_SimonSteps
 new gp_GlowModels
 new gp_AutoLastresquest
+new gp_SpectRounds
 
 new g_MaxClients
 new g_MsgStatusText
@@ -138,6 +142,8 @@ new g_HelpText[512]
 new g_JailDay
 new g_PlayerJoin
 new g_PlayerReason[33]
+new g_PlayerSpect[33]
+new g_PlayerSimon[33]
 new g_PlayerNomic
 new g_PlayerWanted
 new g_PlayerCrowbar
@@ -189,7 +195,7 @@ public plugin_init()
 	register_message(g_MsgClCorpse, "msg_clcorpse")
 
 	register_event("CurWeapon", "current_weapon", "be", "1=1", "2=29")
-	register_event("DeathMsg","player_death","a")
+//	register_event("DeathMsg","player_death","a")
 	register_event("StatusValue", "player_status", "be", "1=2", "2!0")
 	register_event("StatusValue", "player_status", "be", "1=1", "2=0")
 
@@ -247,6 +253,7 @@ public plugin_init()
 	gp_RetryTime = register_cvar("jbe_retrytime", "10.0")
 	gp_RoundMax = register_cvar("jbe_freedayround", "240.0")
 	gp_AutoLastresquest = register_cvar("jbe_autolastrequest", "1")
+	gp_SpectRounds = register_cvar("jbe_spectrounds", "3")
 	gp_TalkMode = register_cvar("jbe_talkmode", "2")	// 0-alltak / 1-tt talk / 1-tt no talk
 	gp_VoiceBlock = register_cvar("jbe_blockvoice", "1")	// 0-dont block / 1-block voicerecord
 	gp_ButtonShoot = register_cvar("jbe_buttonshoot", "1")	// 0-standard / 1-func_button shoots!
@@ -314,6 +321,8 @@ public client_putinserver(id)
 	clear_bit(g_PlayerWanted, id)
 	clear_bit(g_SimonTalking, id)
 	clear_bit(g_SimonVoice, id)
+	g_PlayerSpect[id] = 0
+	g_PlayerSimon[id] = 0
 }
 
 public client_disconnect(id)
@@ -582,15 +591,17 @@ public player_spawn(id)
 					set_bit(g_PlayerCrowbar, id)
 				}
 			}
-			first_join(id)
+			cs_set_user_armor(id, 0, CS_ARMOR_NONE)
 		}
 		case(CS_TEAM_CT):
 		{
+			g_PlayerSimon[id]++
 			set_user_info(id, "model", "jbemodel")
 			entity_set_int(id, EV_INT_body, 3)
-			first_join(id)
+			cs_set_user_armor(id, 100, CS_ARMOR_VESTHELM)
 		}
 	}
+	first_join(id)
 	return HAM_IGNORED
 }
 
@@ -688,31 +699,54 @@ public button_attack(button, id, Float:damage, Float:direction[3], tracehandle, 
 	return HAM_IGNORED
 }
 
-public player_killed(id)
+public player_killed(victim, attacker, shouldgib)
 {
-	static CsTeams:team
-	team = cs_get_user_team(id)
+	static CsTeams:vteam, CsTeams:kteam
+	vteam = cs_get_user_team(victim)
+	kteam = cs_get_user_team(attacker)
 	team_count()
-	switch(team)
+	switch(g_Duel)
 	{
-		case(CS_TEAM_CT):
+		case(0):
 		{
-			if(g_TeamCount[CS_TEAM_CT] > ctcount_allowed())
-				cs_set_user_team(id, CS_TEAM_T)
-
-			if(g_Simon == id)
+			switch(vteam)
 			{
-				g_Simon = 0
-				ClearSyncHud(0, g_HudSync[2][_hudsync])
-				player_hudmessage(0, 2, 5.0, _, "%L", LANG_SERVER, "JBE_SIMON_KILLED")
+				case(CS_TEAM_CT):
+				{
+					if(kteam == CS_TEAM_T && !get_bit(g_PlayerWanted, attacker))
+					{
+						set_bit(g_PlayerWanted, attacker)
+						entity_set_int(attacker, EV_INT_skin, 4)
+					}
+
+					if(g_Simon == victim)
+					{
+						g_Simon = 0
+						ClearSyncHud(0, g_HudSync[2][_hudsync])
+						player_hudmessage(0, 2, 5.0, _, "%L", LANG_SERVER, "JBE_SIMON_KILLED")
+					}
+				}
+				case(CS_TEAM_T):
+				{
+					clear_bit(g_PlayerRevolt, victim)
+					clear_bit(g_PlayerWanted, victim)
+				}
 			}
 		}
-		case(CS_TEAM_T):
+		default:
 		{
-			clear_bit(g_PlayerRevolt, id)
-			clear_bit(g_PlayerWanted, id)
+			if(attacker == g_DuelA || attacker == g_DuelB)
+			{
+				set_user_rendering(victim, kRenderFxNone, 0, 0, 0, kRenderNormal, 0)
+				set_user_rendering(attacker, kRenderFxNone, 0, 0, 0, kRenderNormal, 0)
+				g_Duel = 0
+				g_LastDenied = 0
+				g_BlockWeapons = 0
+				prisoner_last(attacker)
+			}
 		}
 	}
+	hud_status(0)
 }
 
 public player_touchweapon(id, ent)
@@ -813,6 +847,9 @@ public player_cmdstart(id, uc, random)
 public round_first()
 {
 	g_JailDay = 0
+	for(new i = 1; i <= g_MaxClients; i++)
+		g_PlayerSimon[i] = 0
+
 	round_end()
 }
 
@@ -845,14 +882,29 @@ public round_end()
 		if(!is_user_connected(i))
 			continue
 
+		menu_cancel(i)
 		team = cs_get_user_team(i)
-		cs_set_user_armor(i, 0, CS_ARMOR_NONE)
 		player_strip_weapons(i)
 		switch(team)
 		{
+			case(CS_TEAM_CT):
+			{
+				if(g_PlayerSimon[i] > 10)
+				{
+					cmd_nomic(i)
+				}
+			}
 			case(CS_TEAM_SPECTATOR):
 			{
-				show_menu(i, 51, TEAM_MENU, -1)
+				if(g_PlayerSpect[i] > get_pcvar_num(gp_SpectRounds))
+				{
+					client_cmd(i, "disconnect")
+					server_print("JBE Disconnected spectator client #%i", i)
+				}
+				else
+				{
+					show_menu(i, 51, TEAM_MENU, -1)
+				}
 			}
 		}
 	}
@@ -918,6 +970,7 @@ public cmd_simon(id)
 		g_Simon = id
 		get_user_name(id, name, charsmax(name))
 		entity_set_int(id, EV_INT_body, 1)
+		g_PlayerSimon[id]--
 		if(get_pcvar_num(gp_GlowModels))
 			player_glow(id, g_Colors[0])
 
@@ -932,6 +985,7 @@ public cmd_nomic(id)
 	team = cs_get_user_team(id)
 	if(team == CS_TEAM_CT)
 	{
+		server_print("JBE Transfered guard to prisoners team client #%i", id)
 		if(g_Simon == id)
 		{
 			g_Simon = 0
@@ -1023,7 +1077,7 @@ public cmd_freeday_player(id)
 public cmd_lastrequest(id)
 {
 	static i, num[5], menu, menuname[32], option[64]
-	if(g_Freeday || g_LastDenied || id != g_PlayerLast || get_bit(g_PlayerFreeday, id) || !is_user_alive(id))
+	if(g_Freeday || g_LastDenied || id != g_PlayerLast || g_RoundEnd || get_bit(g_PlayerWanted, id) || get_bit(g_PlayerFreeday, id) || !is_user_alive(id))
 		return PLUGIN_CONTINUE
 
 	formatex(menuname, charsmax(menuname), "%L", LANG_SERVER, "JBE_MENU_LASTREQ")
@@ -1144,6 +1198,7 @@ public team_join(id, CsTeams:team)
 		set_msg_block(g_MsgShowMenu, msgblock)
 		set_pdata_int(id, m_fGameHUDInitialized, 1)
 		engclient_cmd(id, "jointeam", "6")
+		g_PlayerSpect[id]++
 	}
 	else
 	{
@@ -1152,6 +1207,7 @@ public team_join(id, CsTeams:team)
 		engclient_cmd(id, "jointeam", (team == CS_TEAM_CT) ? "2" : "1")
 		engclient_cmd(id, "joinclass", "1")
 		set_msg_block(g_MsgShowMenu, msgblock)
+		g_PlayerSpect[id] = 0
 	}
 	
 	if(vgui)
@@ -1373,7 +1429,7 @@ public duel_knives(id, menu, item)
 	menu_item_getinfo(menu, item, access, data, charsmax(data), dst, charsmax(dst), callback)
 	get_user_name(id, src, charsmax(src))
 	player = str_to_num(data)
-	formatex(option, charsmax(option), "%L^n%L", LANG_SERVER, "JBE_MENU_LASTREQ_SEL1", src, LANG_SERVER, "JBE_MENU_DUEL_SEL", src, dst)
+	formatex(option, charsmax(option), "%L^n%L", LANG_SERVER, "JBE_MENU_LASTREQ_SEL3", src, LANG_SERVER, "JBE_MENU_DUEL_SEL", src, dst)
 	player_hudmessage(0, 6, 3.0, {0, 255, 0}, option)
 
 	g_DuelA = id
