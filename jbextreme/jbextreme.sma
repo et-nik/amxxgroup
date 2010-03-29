@@ -271,16 +271,6 @@ public plugin_init()
 			LANG_SERVER, "JBE_HELP_PRISONER_CMDS")
 }
  
-public plugin_cfg()
-{
-	set_cvar_num("sv_alltalk", 1)
-	set_cvar_num("mp_roundtime", 2)
-	set_cvar_num("mp_limitteams", 0)
-	set_cvar_num("mp_autoteambalance", 0)
-	set_cvar_num("mp_tkpunish", 0)
-	set_cvar_num("mp_friendlyfire", 1)
-}
-
 public plugin_precache()
 {
 	static i
@@ -812,33 +802,39 @@ public sound_emit(id, channel, sample[])
 
 public voice_listening(receiver, sender, bool:listen)
 {
-	if(!is_user_connected(receiver) || !is_user_connected(sender) || (receiver == sender) || (sender == g_Simon) || is_user_admin(sender))
+	if((receiver == sender) || (sender == g_Simon) || is_user_admin(sender))
 		return FMRES_IGNORED
  
-	if(!get_bit(g_SimonVoice, sender) && get_pcvar_num(gp_VoiceBlock))
+	if((!get_bit(g_SimonVoice, sender) && get_pcvar_num(gp_VoiceBlock)) || !is_user_alive(sender))
 	{
 		engfunc(EngFunc_SetClientListening, receiver, sender, false)
 		return FMRES_SUPERCEDE
 	}
 
+	listen = true
+
 	if(g_SimonTalking && (sender != g_Simon))
 	{
-		engfunc(EngFunc_SetClientListening, receiver, sender, false)
-		return FMRES_SUPERCEDE
+		listen = false
 	}
-	else if((get_pcvar_num(gp_TalkMode) == 1) && (get_user_team(sender) == _:CS_TEAM_T) && (get_user_team(receiver) == _:CS_TEAM_CT))
+	else
 	{
-		engfunc(EngFunc_SetClientListening, receiver, sender, false)
-		return FMRES_SUPERCEDE
+		static CsTeams:steam
+		steam = cs_get_user_team(sender)
+		switch(get_pcvar_num(gp_TalkMode))
+		{
+			case(2):
+			{
+				listen = (steam == CS_TEAM_CT)
+			}
+			case(1):
+			{
+				listen = (steam == CS_TEAM_CT || steam == CS_TEAM_T)
+			}
+		}
 	}
-	else if((get_pcvar_num(gp_TalkMode) == 2) && !is_user_alive(sender))
-	{
-		engfunc(EngFunc_SetClientListening, receiver, sender, false)
-		return FMRES_SUPERCEDE
-	}
-	
- 
-	engfunc(EngFunc_SetClientListening, receiver, sender, true)
+
+	engfunc(EngFunc_SetClientListening, receiver, sender, listen)
 	return FMRES_SUPERCEDE
 }
 
@@ -856,6 +852,12 @@ public round_first()
 	for(new i = 1; i <= g_MaxClients; i++)
 		g_PlayerSimon[i] = 0
 
+	set_cvar_num("sv_alltalk", 1)
+	set_cvar_num("mp_roundtime", 2)
+	set_cvar_num("mp_limitteams", 0)
+	set_cvar_num("mp_autoteambalance", 0)
+	set_cvar_num("mp_tkpunish", 0)
+	set_cvar_num("mp_friendlyfire", 1)
 	round_end()
 }
 
@@ -1212,8 +1214,6 @@ public team_join(id, CsTeams:team)
 		}
 		case CS_TEAM_T, CS_TEAM_CT:
 		{
-		server_print("join %i %i %s", id, team, (team == CS_TEAM_CT) ? "2" : "1")
-
 			msgblock = get_msg_block(g_MsgShowMenu)
 			set_msg_block(g_MsgShowMenu, BLOCK_ONCE)
 			engclient_cmd(id, "jointeam", (team == CS_TEAM_CT) ? "2" : "1")
@@ -1531,6 +1531,7 @@ public freeday_choice(id, menu, item)
 		}
 		case('2'):
 		{
+			server_print("JBE Client %i gives freeday for everyone", id)
 			check_freeday(TASK_FREEDAY)
 		}
 	}
