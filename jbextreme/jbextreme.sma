@@ -2,7 +2,14 @@
 Changelog:
 
 v1.6
+	* Updated dictionary
 	* Fixed last request abuse bug
+	* Fixed voice mode bugs
+	* Added auto team transfer to Guards that never been Simon
+	* Added auto disconnect to Spectators that doesn't join any team in 3 rounds
+	* Added blocking for hints messages
+	* Added auto door open on freeday
+	* Added /open command only for Simon
 
 v1.5
 	* Improved team select code
@@ -45,7 +52,7 @@ v1.3
 #define TASK_HELP		2487300
 #define TASK_SAFETIME	2487400
 #define TASK_FREEEND	2487500
-#define TEAM_MENU	"#Team_Select_Spect"
+#define TEAM_MENU		"#Team_Select_Spect"
 #define TEAM_MENU2	"#Team_Select_Spect"
 
 #define get_bit(%1,%2) 		( %1 &   1 << ( %2 & 31 ) )
@@ -60,6 +67,7 @@ v1.3
 #define m_iPrimaryWeapon	116
 #define m_iVGUI			510
 #define m_fGameHUDInitialized	349
+#define m_fNextHudTextArgsGameTime	198
  
 enum _hud { _hudsync, Float:_x, Float:_y, Float:_time }
 enum _lastrequest { _knife, _deagle, _freeday, _weapon }
@@ -77,9 +85,12 @@ new gp_RetryTime
 new gp_RoundMax
 new gp_ButtonShoot
 new gp_SimonSteps
+new gp_SimonRandom
 new gp_GlowModels
 new gp_AutoLastresquest
 new gp_SpectRounds
+new gp_NosimonRounds
+new gp_AutoOpen
 
 new g_MaxClients
 new g_MsgStatusText
@@ -106,7 +117,8 @@ new const _Duel[][_duel] =
 {
 	{ "Deagle", CSW_DEAGLE, "weapon_deagle", "JBE_MENU_LASTREQ_OPT4", "JBE_MENU_LASTREQ_SEL4" },
 	{ "Scout", CSW_SCOUT, "weapon_scout", "JBE_MENU_LASTREQ_OPT5", "JBE_MENU_LASTREQ_SEL5" },
-	{ "Grenades", CSW_HEGRENADE, "weapon_hegrenade", "JBE_MENU_LASTREQ_OPT6", "JBE_MENU_LASTREQ_SEL6" }
+	{ "Grenades", CSW_HEGRENADE, "weapon_hegrenade", "JBE_MENU_LASTREQ_OPT6", "JBE_MENU_LASTREQ_SEL6" },
+	{ "Awp", CSW_AWP, "weapon_awp", "JBE_MENU_LASTREQ_OPT7", "JBE_MENU_LASTREQ_SEL7" }
 }
 
 // Reasons
@@ -139,6 +151,7 @@ new const g_Colors[][3] = { {0, 255, 0}, {255, 140, 0}, {0, 0, 255}, {255, 0, 0}
 
 
 new CsTeams:g_PlayerTeam[33]
+new Float:g_SimonRandom
 new g_HelpText[512]
 new g_JailDay
 new g_PlayerJoin
@@ -196,7 +209,6 @@ public plugin_init()
 	register_message(g_MsgClCorpse, "msg_clcorpse")
 
 	register_event("CurWeapon", "current_weapon", "be", "1=1", "2=29")
-//	register_event("DeathMsg","player_death","a")
 	register_event("StatusValue", "player_status", "be", "1=2", "2!0")
 	register_event("StatusValue", "player_status", "be", "1=1", "2=0")
 
@@ -236,6 +248,7 @@ public plugin_init()
 	register_clcmd("say /lastrequest", "cmd_lastrequest")
 	register_clcmd("say /duel", "cmd_lastrequest")
 	register_clcmd("say /simon", "cmd_simon")
+	register_clcmd("say /open", "cmd_open")
 	register_clcmd("say /nomic", "cmd_nomic")
 	register_clcmd("say /box", "cmd_box")
 	register_clcmd("say /help", "cmd_help")
@@ -255,6 +268,9 @@ public plugin_init()
 	gp_RoundMax = register_cvar("jbe_freedayround", "240.0")
 	gp_AutoLastresquest = register_cvar("jbe_autolastrequest", "1")
 	gp_SpectRounds = register_cvar("jbe_spectrounds", "3")
+	gp_NosimonRounds = register_cvar("jbe_nosimonrounds", "10")
+	gp_SimonRandom = register_cvar("jbe_randomsimon", "0")
+	gp_AutoOpen = register_cvar("jbe_autoopen", "1")
 	gp_TalkMode = register_cvar("jbe_talkmode", "2")	// 0-alltak / 1-tt talk / 1-tt no talk
 	gp_VoiceBlock = register_cvar("jbe_blockvoice", "1")	// 0-dont block / 1-block voicerecord
 	gp_ButtonShoot = register_cvar("jbe_buttonshoot", "1")	// 0-standard / 1-func_button shoots!
@@ -454,48 +470,6 @@ public current_weapon(id)
 	return PLUGIN_CONTINUE
 }
 
-public player_death(id)
-{
-	static killer, victim, CsTeams:kteam, CsTeams:vteam
-
-	killer = read_data(1) 
-	victim = read_data(2) 
-
-	if(!is_user_connected(victim) || !is_user_alive(killer))
-		return PLUGIN_CONTINUE
-
-	kteam = cs_get_user_team(killer)
-	vteam = cs_get_user_team(victim)
-
-	switch(g_Duel)
-	{
-		case(0):
-		{
-			if(vteam == CS_TEAM_CT && kteam == CS_TEAM_T && !get_bit(g_PlayerWanted, killer))
-			{
-				set_bit(g_PlayerWanted, killer)
-				entity_set_int(killer, EV_INT_skin, 4)
-				hud_status(0)
-			}
-		}
-		default:
-		{
-			if(killer == g_DuelA || killer == g_DuelB)
-			{
-				g_Duel = 0
-				g_LastDenied = 0
-				g_BlockWeapons = 0
-				prisoner_last(killer)
-			}
-			set_user_rendering(victim, kRenderFxNone, 0, 0, 0, kRenderNormal, 0)
-			set_user_rendering(killer, kRenderFxNone, 0, 0, 0, kRenderNormal, 0)
-		}
-	}
-
-
-	return PLUGIN_CONTINUE
-}
-
 public player_status(id)
 {
 	static type, player, CsTeams:team, name[32], health
@@ -538,6 +512,7 @@ public player_spawn(id)
 	if(!is_user_connected(id))
 		return HAM_IGNORED
 
+	set_pdata_float(id, m_fNextHudTextArgsGameTime, get_gametime() + 999999.0)
 	player_strip_weapons(id)
 	if(g_RoundEnd)
 	{
@@ -693,6 +668,9 @@ public button_attack(button, id, Float:damage, Float:direction[3], tracehandle, 
 public player_killed(victim, attacker, shouldgib)
 {
 	static CsTeams:vteam, CsTeams:kteam
+	if(victim == attacker)
+		return HAM_IGNORED
+
 	if(!(0 < attacker <= g_MaxClients) || !is_user_connected(attacker))
 		kteam = CS_TEAM_UNASSIGNED
 	else
@@ -730,7 +708,7 @@ public player_killed(victim, attacker, shouldgib)
 		}
 		default:
 		{
-			if(attacker == g_DuelA || attacker == g_DuelB)
+			if(g_Duel != 2 && (attacker == g_DuelA || attacker == g_DuelB))
 			{
 				set_user_rendering(victim, kRenderFxNone, 0, 0, 0, kRenderNormal, 0)
 				set_user_rendering(attacker, kRenderFxNone, 0, 0, 0, kRenderNormal, 0)
@@ -863,7 +841,8 @@ public round_first()
 
 public round_end()
 {
-	new CsTeams:team
+	static CsTeams:team
+	static maxnosimon
 	g_SafeTime = 0
 	g_PlayerRevolt = 0
 	g_PlayerFreeday = 0
@@ -886,6 +865,7 @@ public round_end()
 	remove_task(TASK_FREEDAY)
 	remove_task(TASK_FREEEND)
 	remove_task(TASK_ROUND)
+	maxnosimon = get_pcvar_num(gp_NosimonRounds)
 	for(new i = 1; i <= g_MaxClients; i++)
 	{
 		if(!is_user_connected(i))
@@ -898,7 +878,7 @@ public round_end()
 		{
 			case(CS_TEAM_CT):
 			{
-				if(g_PlayerSimon[i] > 10)
+				if(g_PlayerSimon[i] > maxnosimon)
 				{
 					cmd_nomic(i)
 				}
@@ -933,11 +913,16 @@ public round_start()
 	{
 		g_Freeday = 1
 		emit_sound(0, CHAN_AUTO, "jbextreme/brass_bell_C.wav", 1.0, ATTN_NORM, 0, PITCH_NORM)
+		check_freeday(TASK_FREEDAY)
+	}
+	else
+	{
+		set_task(60.0, "check_freeday", TASK_FREEDAY)
 	}
 	set_task(2.0, "hud_status", TASK_STATUS, _, _, "b")
 	set_task(get_pcvar_float(gp_RetryTime) + 1.0, "safe_time", TASK_SAFETIME)
-	set_task(60.0, "check_freeday", TASK_FREEDAY)
 	set_task(120.0, "freeday_end", TASK_FREEDAY)
+	g_SimonRandom = get_pcvar_num(gp_SimonRandom) ? random_float(15.0, 45.0) : 0.0
 	g_SimonAllowed = 1
 	g_FreedayNext = 0
 }
@@ -975,6 +960,9 @@ public cmd_voiceoff(id)
 public cmd_simon(id)
 {
 	static CsTeams:team, name[32]
+	if(!is_user_connected(id))
+		return PLUGIN_HANDLED
+
 	team = cs_get_user_team(id)
 	if(g_SimonAllowed && !g_Freeday && is_user_alive(id) && team == CS_TEAM_CT && !g_Simon)
 	{
@@ -987,6 +975,14 @@ public cmd_simon(id)
 
 		hud_status(0)
 	}
+	return PLUGIN_HANDLED
+}
+
+public cmd_open(id)
+{
+	if(id == g_Simon)
+		jail_open()
+
 	return PLUGIN_HANDLED
 }
 
@@ -1308,6 +1304,11 @@ public hud_status(task)
 	if(g_RoundStarted < (get_pcvar_num(gp_RetryTime) / 2))
 		g_RoundStarted++
 
+	if(!g_Freeday && !g_Simon && g_SimonAllowed && (g_SimonRandom < get_gametime()))
+	{
+		cmd_simon(random_num(1, g_MaxClients))
+	}
+
 	n = 0
 	formatex(wanted, charsmax(wanted), "%L", LANG_SERVER, "JBE_PRISONER_WANTED")
 	n = strlen(wanted)
@@ -1372,6 +1373,9 @@ public check_freeday(task)
 			set_task(roundmax - 60.0, "check_end", TASK_ROUND)
 		}
 	}
+
+	if(get_pcvar_num(gp_AutoOpen))
+		jail_open()
 }
 
 public freeday_end(task)
@@ -1420,7 +1424,7 @@ public prisoner_last(id)
 			player_hudmessage(0, 8, 3.0, {0, 255, 0}, "%L", LANG_SERVER, "JBE_STATUS_ENDTIMER", floatround(roundmax - 60.0))
 			set_task(roundmax - 60.0, "check_end", TASK_ROUND)
 		}
-		if(get_pcvar_num(gp_AutoLastresquest))
+		if((g_TeamAlive[CS_TEAM_CT] > 0) && get_pcvar_num(gp_AutoLastresquest))
 			cmd_lastrequest(id)
 	}
 }
@@ -1694,3 +1698,42 @@ stock is_freeday()
 {
 	return (g_FreedayNext || g_Freeday || (g_JailDay == 1))
 }
+
+stock jail_open()
+{
+	static button
+	if((button = get_jailbutton()))
+		ExecuteHamB(Ham_Use, button, 0, 0, 1, 1.0)
+}
+
+stock get_jailbutton()
+{
+	static ent = -1
+	static ent2
+	static ent3
+	static Float:origin[3]
+	static Float:radius = 1000.0
+	static class[32]
+	static name[32]
+	while((ent = engfunc(EngFunc_FindEntityByString, ent, "classname", "info_player_deathmatch")))
+	{
+		ent2 = 1
+		pev(ent, pev_origin, origin)
+		while((ent2 = engfunc(EngFunc_FindEntityInSphere, ent2, origin, radius)))
+		{
+			if(!pev_valid(ent2))
+				continue
+
+			pev(ent2, pev_classname, class, charsmax(class))
+			if(!equal(class, "func_door"))
+				continue
+
+			pev(ent2, pev_targetname, name, charsmax(name))
+			ent3 = engfunc(EngFunc_FindEntityByString, 0, "target", name)
+			if(pev_valid(ent3))
+				return ent3
+		}
+	}
+	return 0
+}
+
