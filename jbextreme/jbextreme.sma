@@ -1,6 +1,12 @@
 /*
 Changelog:
 
+v1.8
+	* Fixed duel bug
+	* Added cell opener for maps with multi_manager 
+	* Added cvar to enable last request
+	* Added cvar to enable motd
+
 v1.7
 	* Fixed auto Simon mode
 
@@ -46,7 +52,7 @@ v1.3
  
 #define PLUGIN_NAME	"JailBreak Extreme"
 #define PLUGIN_AUTHOR	"JoRoPiTo"
-#define PLUGIN_VERSION	"1.7"
+#define PLUGIN_VERSION	"1.8"
 #define PLUGIN_CVAR	"jbextreme"
 
 #define TASK_STATUS	2487000
@@ -57,6 +63,7 @@ v1.3
 #define TASK_FREEEND	2487500
 #define TEAM_MENU		"#Team_Select_Spect"
 #define TEAM_MENU2	"#Team_Select_Spect"
+#define CELL_RADIUS	Float:200.0
 
 #define get_bit(%1,%2) 		( %1 &   1 << ( %2 & 31 ) )
 #define set_bit(%1,%2)	 	%1 |=  ( 1 << ( %2 & 31 ) )
@@ -77,6 +84,8 @@ enum _lastrequest { _knife, _deagle, _freeday, _weapon }
 enum _duel { _name[16], _csw, _entname[32], _opt[32], _sel[32] }
 
 new gp_PrecacheSpawn
+new gp_PrecacheKeyValue
+
 new gp_CrowbarMax
 new gp_CrowbarMul
 new gp_TeamRatio
@@ -91,6 +100,8 @@ new gp_SimonSteps
 new gp_SimonRandom
 new gp_GlowModels
 new gp_AutoLastresquest
+new gp_LastRequest
+new gp_Motd
 new gp_SpectRounds
 new gp_NosimonRounds
 new gp_AutoOpen
@@ -155,6 +166,7 @@ new const g_Colors[][3] = { {0, 255, 0}, {255, 140, 0}, {0, 0, 255}, {255, 0, 0}
 
 new CsTeams:g_PlayerTeam[33]
 new Float:g_SimonRandom
+new Trie:g_CellManagers
 new g_HelpText[512]
 new g_JailDay
 new g_PlayerJoin
@@ -187,10 +199,12 @@ new g_Duel
 new g_DuelA
 new g_DuelB
 new g_SafeTime
+new g_Buttons[10]
  
 public plugin_init()
 {
 	unregister_forward(FM_Spawn, gp_PrecacheSpawn)
+	unregister_forward(FM_KeyValue, gp_PrecacheKeyValue)
  
 	register_plugin(PLUGIN_NAME, PLUGIN_VERSION, PLUGIN_AUTHOR)
 	register_cvar(PLUGIN_CVAR, PLUGIN_VERSION, FCVAR_SERVER|FCVAR_SPONLY)
@@ -258,6 +272,7 @@ public plugin_init()
 
 	register_clcmd("jbe_freeday", "adm_freeday", ADMIN_KICK)
 	register_clcmd("jbe_nomic", "adm_nomic", ADMIN_KICK)
+	register_clcmd("jbe_open", "adm_open", ADMIN_KICK)
 	register_clcmd("jbe_box", "adm_box", ADMIN_KICK)
  
 	gp_GlowModels = register_cvar("jbe_glowmodels", "0")
@@ -270,6 +285,8 @@ public plugin_init()
 	gp_RetryTime = register_cvar("jbe_retrytime", "10.0")
 	gp_RoundMax = register_cvar("jbe_freedayround", "240.0")
 	gp_AutoLastresquest = register_cvar("jbe_autolastrequest", "1")
+	gp_LastRequest = register_cvar("jbe_lastrequest", "1")
+	gp_Motd = register_cvar("jbe_motd", "1")
 	gp_SpectRounds = register_cvar("jbe_spectrounds", "3")
 	gp_NosimonRounds = register_cvar("jbe_nosimonrounds", "10")
 	gp_SimonRandom = register_cvar("jbe_randomsimon", "0")
@@ -288,6 +305,8 @@ public plugin_init()
 			LANG_SERVER, "JBE_HELP_BINDS",
 			LANG_SERVER, "JBE_HELP_GUARD_CMDS",
 			LANG_SERVER, "JBE_HELP_PRISONER_CMDS")
+
+	setup_buttons()
 }
  
 public plugin_precache()
@@ -307,7 +326,9 @@ public plugin_precache()
 	precache_sound("jbextreme/nm_goodbadugly.wav")
 	precache_sound("jbextreme/brass_bell_C.wav")
  
+ 	g_CellManagers = TrieCreate()
 	gp_PrecacheSpawn = register_forward(FM_Spawn, "precache_spawn", 1)
+	gp_PrecacheKeyValue = register_forward(FM_KeyValue, "precache_keyvalue", 1)
 }
 
 public precache_spawn(ent)
@@ -320,6 +341,21 @@ public precache_spawn(ent)
 			if(equal(szClass, _RemoveEntities[i]))
 				remove_entity(ent)
 	}
+}
+
+public precache_keyvalue(ent, kvd_handle)
+{
+	static info[32]
+	if(!is_valid_ent(ent))
+		return FMRES_IGNORED
+
+	get_kvd(kvd_handle, KV_ClassName, info, charsmax(info))
+	if(!equal(info, "multi_manager"))
+		return FMRES_IGNORED
+
+	get_kvd(kvd_handle, KV_KeyName, info, charsmax(info))
+	TrieSetCell(g_CellManagers, info, ent)
+	return FMRES_IGNORED
 }
 
 public client_putinserver(id)
@@ -447,7 +483,10 @@ public msg_showmenu(msgid, dest, id)
 
 public msg_motd(msgid, dest, id)
 {
-	return PLUGIN_HANDLED
+	if(get_pcvar_num(gp_Motd))
+		return PLUGIN_HANDLED
+
+	return PLUGIN_CONTINUE
 }
 
 public msg_clcorpse(msgid, dest, id)
@@ -663,7 +702,10 @@ public player_attack(victim, attacker, Float:damage, Float:direction[3], traceha
 public button_attack(button, id, Float:damage, Float:direction[3], tracehandle, damagebits)
 {
 	if(is_valid_ent(button) && get_pcvar_num(gp_ButtonShoot))
+	{
 		ExecuteHam(Ham_Use, button, id, 0, 2, 1.0)
+		entity_set_float(button, EV_FL_frame, 0.0)
+	}
 
 	return HAM_IGNORED
 }
@@ -671,9 +713,6 @@ public button_attack(button, id, Float:damage, Float:direction[3], tracehandle, 
 public player_killed(victim, attacker, shouldgib)
 {
 	static CsTeams:vteam, CsTeams:kteam
-	if(victim == attacker)
-		return HAM_IGNORED
-
 	if(!(0 < attacker <= g_MaxClients) || !is_user_connected(attacker))
 		kteam = CS_TEAM_UNASSIGNED
 	else
@@ -687,7 +726,6 @@ public player_killed(victim, attacker, shouldgib)
 		player_hudmessage(0, 2, 5.0, _, "%L", LANG_SERVER, "JBE_SIMON_KILLED")
 	}
 
-	team_count()
 	switch(g_Duel)
 	{
 		case(0):
@@ -718,7 +756,8 @@ public player_killed(victim, attacker, shouldgib)
 				g_Duel = 0
 				g_LastDenied = 0
 				g_BlockWeapons = 0
-				prisoner_last(attacker)
+				g_PlayerLast = 0
+				team_count()
 			}
 		}
 	}
@@ -1087,7 +1126,7 @@ public cmd_freeday_player(id)
 public cmd_lastrequest(id)
 {
 	static i, num[5], menu, menuname[32], option[64]
-	if(g_Freeday || g_LastDenied || id != g_PlayerLast || g_RoundEnd || get_bit(g_PlayerWanted, id) || get_bit(g_PlayerFreeday, id) || !is_user_alive(id))
+	if(!get_pcvar_num(gp_LastRequest) || g_Freeday || g_LastDenied || id != g_PlayerLast || g_RoundEnd || get_bit(g_PlayerWanted, id) || get_bit(g_PlayerFreeday, id) || !is_user_alive(id))
 		return PLUGIN_CONTINUE
 
 	formatex(menuname, charsmax(menuname), "%L", LANG_SERVER, "JBE_MENU_LASTREQ")
@@ -1137,12 +1176,17 @@ public adm_nomic(id)
 	return PLUGIN_HANDLED
 }
 
+public adm_open(id)
+{
+	jail_open()
+	return PLUGIN_HANDLED
+}
+
 public adm_box(id)
 {
 	cmd_box(-1)
 	return PLUGIN_HANDLED
 }
-
 
 public team_select(id, key)
 {
@@ -1538,8 +1582,11 @@ public freeday_choice(id, menu, item)
 		}
 		case('2'):
 		{
-			server_print("JBE Client %i gives freeday for everyone", id)
-			check_freeday(TASK_FREEDAY)
+			if(!g_Simon || (id == g_Simon))
+			{
+				server_print("JBE Client %i gives freeday for everyone", id)
+				check_freeday(TASK_FREEDAY)
+			}
 		}
 	}
 	return PLUGIN_HANDLED
@@ -1591,6 +1638,59 @@ public lastrequest_select(id, menu, item)
 	g_LastDenied = 1
 	menu_destroy(menu)
 	return PLUGIN_HANDLED
+}
+
+public setup_buttons()
+{
+	new ent[3]
+	new Float:origin[3]
+	new info[32]
+	new pos
+
+	while((pos <= sizeof(g_Buttons)) && (ent[0] = engfunc(EngFunc_FindEntityByString, ent[0], "classname", "info_player_deathmatch")))
+	{
+		pev(ent[0], pev_origin, origin)
+		while((ent[1] = engfunc(EngFunc_FindEntityInSphere, ent[1], origin, CELL_RADIUS)))
+		{
+			if(!is_valid_ent(ent[1]))
+				continue
+
+			entity_get_string(ent[1], EV_SZ_classname, info, charsmax(info))
+			if(!equal(info, "func_door"))
+				continue
+
+			entity_get_string(ent[1], EV_SZ_targetname, info, charsmax(info))
+			if(!info[0])
+				continue
+
+			if(TrieKeyExists(g_CellManagers, info))
+			{
+				TrieGetCell(g_CellManagers, info, ent[2])
+			}
+			else
+			{
+				ent[2] = engfunc(EngFunc_FindEntityByString, 0, "target", info)
+			}
+
+			if(is_valid_ent(ent[2]) && (in_array(ent[2], g_Buttons, sizeof(g_Buttons)) < 0))
+			{
+				g_Buttons[pos] = ent[2]
+				pos++
+				break
+			}
+		}
+	}
+	TrieDestroy(g_CellManagers)
+}
+
+stock in_array(needle, data[], size)
+{
+	for(new i = 0; i < size; i++)
+	{
+		if(data[i] == needle)
+			return i
+	}
+	return -1
 }
 
 stock freeday_set(id, player)
@@ -1702,41 +1802,15 @@ stock is_freeday()
 	return (g_FreedayNext || g_Freeday || (g_JailDay == 1))
 }
 
-stock jail_open()
+public jail_open()
 {
-	static button
-	if((button = get_jailbutton()))
-		ExecuteHamB(Ham_Use, button, 0, 0, 1, 1.0)
-}
-
-stock get_jailbutton()
-{
-	static ent = -1
-	static ent2
-	static ent3
-	static Float:origin[3]
-	static Float:radius = 1000.0
-	static class[32]
-	static name[32]
-	while((ent = engfunc(EngFunc_FindEntityByString, ent, "classname", "info_player_deathmatch")))
+	static i
+	for(i = 0; i < sizeof(g_Buttons); i++)
 	{
-		ent2 = 1
-		pev(ent, pev_origin, origin)
-		while((ent2 = engfunc(EngFunc_FindEntityInSphere, ent2, origin, radius)))
+		if(g_Buttons[i])
 		{
-			if(!pev_valid(ent2))
-				continue
-
-			pev(ent2, pev_classname, class, charsmax(class))
-			if(!equal(class, "func_door"))
-				continue
-
-			pev(ent2, pev_targetname, name, charsmax(name))
-			ent3 = engfunc(EngFunc_FindEntityByString, 0, "target", name)
-			if(pev_valid(ent3))
-				return ent3
+			ExecuteHamB(Ham_Use, g_Buttons[i], 0, 0, 1, 1.0)
+			entity_set_float(g_Buttons[i], EV_FL_frame, 0.0)
 		}
 	}
-	return 0
 }
-
