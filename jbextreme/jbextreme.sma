@@ -1,6 +1,9 @@
 /*
 Changelog:
 
+v1.7
+	* Fixed auto Simon mode
+
 v1.6
 	* Updated dictionary
 	* Fixed last request abuse bug
@@ -43,7 +46,7 @@ v1.3
  
 #define PLUGIN_NAME	"JailBreak Extreme"
 #define PLUGIN_AUTHOR	"JoRoPiTo"
-#define PLUGIN_VERSION	"1.6"
+#define PLUGIN_VERSION	"1.7"
 #define PLUGIN_CVAR	"jbextreme"
 
 #define TASK_STATUS	2487000
@@ -677,6 +680,13 @@ public player_killed(victim, attacker, shouldgib)
 		kteam = cs_get_user_team(attacker)
 
 	vteam = cs_get_user_team(victim)
+	if(g_Simon == victim)
+	{
+		g_Simon = 0
+		ClearSyncHud(0, g_HudSync[2][_hudsync])
+		player_hudmessage(0, 2, 5.0, _, "%L", LANG_SERVER, "JBE_SIMON_KILLED")
+	}
+
 	team_count()
 	switch(g_Duel)
 	{
@@ -690,13 +700,6 @@ public player_killed(victim, attacker, shouldgib)
 					{
 						set_bit(g_PlayerWanted, attacker)
 						entity_set_int(attacker, EV_INT_skin, 4)
-					}
-
-					if(g_Simon == victim)
-					{
-						g_Simon = 0
-						ClearSyncHud(0, g_HudSync[2][_hudsync])
-						player_hudmessage(0, 2, 5.0, _, "%L", LANG_SERVER, "JBE_SIMON_KILLED")
 					}
 				}
 				case(CS_TEAM_T):
@@ -1304,7 +1307,7 @@ public hud_status(task)
 	if(g_RoundStarted < (get_pcvar_num(gp_RetryTime) / 2))
 		g_RoundStarted++
 
-	if(!g_Freeday && !g_Simon && g_SimonAllowed && (g_SimonRandom < get_gametime()))
+	if(!g_Freeday && !g_Simon && g_SimonAllowed && (0.0 < g_SimonRandom < get_gametime()))
 	{
 		cmd_simon(random_num(1, g_MaxClients))
 	}
