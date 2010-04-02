@@ -12,6 +12,7 @@ Proyects list
   * [closeyoureyes Close Your Eyes] *done* / *released*
   * [nospeedhack No SpeedHack] *done*
   * [hatsgame Hats Game]
+  * [rcontrol Remote Control Fun!]
 
 = Utilities =
   * [svcstocks TEMPENTITY Stocks]
