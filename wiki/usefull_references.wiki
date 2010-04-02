@@ -10,6 +10,10 @@
 
 [http://xpaw.crannk.de/pev_research.php PEV Research]
 
+[http://forums.alliedmods.net/showthread.php?t=9260 List of CS/CZ/DOD Events/Messages]
+
+[http://forums.alliedmods.net/showthread.php?p=65983 Message Logging Plugin]
+
 ==Other links==
 
 [http://www.csload.com/cs_1.6_personal_file_dump Old HL1 Resource Files]
