@@ -16,6 +16,7 @@
 
 [http://forums.alliedmods.net/showthread.php?t=123097 Counter-Strike SDK]
 
+[http://forums.alliedmods.net/showthread.php?t=67752 AMX ModX Profiler]
 ==Other links==
 
 [http://www.csload.com/cs_1.6_personal_file_dump Old HL1 Resource Files]
