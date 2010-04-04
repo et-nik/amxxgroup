@@ -3,9 +3,11 @@ Changelog:
 
 v1.8
 	* Fixed duel bug
+	* Fixed clcmd/concmd flags problem
 	* Added cell opener for maps with multi_manager 
 	* Added cvar to enable last request
 	* Added cvar to enable motd
+	* Finally fixed voice control
 
 v1.7
 	* Fixed auto Simon mode
@@ -63,6 +65,7 @@ v1.3
 #define TASK_FREEEND	2487500
 #define TEAM_MENU		"#Team_Select_Spect"
 #define TEAM_MENU2	"#Team_Select_Spect"
+#define HUD_DELAY		Float:4.0
 #define CELL_RADIUS	Float:200.0
 
 #define get_bit(%1,%2) 		( %1 &   1 << ( %2 & 31 ) )
@@ -271,9 +274,9 @@ public plugin_init()
 	register_clcmd("say /help", "cmd_help")
 
 	register_clcmd("jbe_freeday", "adm_freeday", ADMIN_KICK)
-	register_clcmd("jbe_nomic", "adm_nomic", ADMIN_KICK)
-	register_clcmd("jbe_open", "adm_open", ADMIN_KICK)
-	register_clcmd("jbe_box", "adm_box", ADMIN_KICK)
+	register_concmd("jbe_nomic", "adm_nomic", ADMIN_KICK)
+	register_concmd("jbe_open", "adm_open", ADMIN_KICK)
+	register_concmd("jbe_box", "adm_box", ADMIN_KICK)
  
 	gp_GlowModels = register_cvar("jbe_glowmodels", "0")
 	gp_SimonSteps = register_cvar("jbe_simonsteps", "1")
@@ -288,7 +291,7 @@ public plugin_init()
 	gp_LastRequest = register_cvar("jbe_lastrequest", "1")
 	gp_Motd = register_cvar("jbe_motd", "1")
 	gp_SpectRounds = register_cvar("jbe_spectrounds", "3")
-	gp_NosimonRounds = register_cvar("jbe_nosimonrounds", "10")
+	gp_NosimonRounds = register_cvar("jbe_nosimonrounds", "7")
 	gp_SimonRandom = register_cvar("jbe_randomsimon", "0")
 	gp_AutoOpen = register_cvar("jbe_autoopen", "1")
 	gp_TalkMode = register_cvar("jbe_talkmode", "2")	// 0-alltak / 1-tt talk / 1-tt no talk
@@ -822,12 +825,24 @@ public sound_emit(id, channel, sample[])
 
 public voice_listening(receiver, sender, bool:listen)
 {
-	if((receiver == sender) || (sender == g_Simon) || is_user_admin(sender))
+	if((receiver == sender))
 		return FMRES_IGNORED
- 
+
+	if(is_user_admin(sender))
+	{
+		engfunc(EngFunc_SetClientListening, receiver, sender, true)
+		return FMRES_SUPERCEDE
+	}
+
 	if((!get_bit(g_SimonVoice, sender) && get_pcvar_num(gp_VoiceBlock)) || !is_user_alive(sender))
 	{
 		engfunc(EngFunc_SetClientListening, receiver, sender, false)
+		return FMRES_SUPERCEDE
+	}
+
+	if(sender == g_Simon)
+	{
+		engfunc(EngFunc_SetClientListening, receiver, sender, true)
 		return FMRES_SUPERCEDE
 	}
 
@@ -961,7 +976,7 @@ public round_start()
 	{
 		set_task(60.0, "check_freeday", TASK_FREEDAY)
 	}
-	set_task(2.0, "hud_status", TASK_STATUS, _, _, "b")
+	set_task(HUD_DELAY, "hud_status", TASK_STATUS, _, _, "b")
 	set_task(get_pcvar_float(gp_RetryTime) + 1.0, "safe_time", TASK_SAFETIME)
 	set_task(120.0, "freeday_end", TASK_FREEDAY)
 	g_SimonRandom = get_pcvar_num(gp_SimonRandom) ? random_float(15.0, 45.0) : 0.0
@@ -1030,7 +1045,7 @@ public cmd_open(id)
 
 public cmd_nomic(id)
 {
-	static CsTeams:team, alive
+	static CsTeams:team
 	team = cs_get_user_team(id)
 	if(team == CS_TEAM_CT)
 	{
@@ -1042,10 +1057,9 @@ public cmd_nomic(id)
 		}
 		if(!is_user_admin(id))
 			set_bit(g_PlayerNomic, id)
-		alive = is_user_alive(id)
+
+		user_silentkill(id)
 		cs_set_user_team(id, CS_TEAM_T)
-		if(alive)
-			spawn(id)
 	}
 	return PLUGIN_HANDLED
 }
@@ -1055,7 +1069,7 @@ public cmd_box(id)
 	static i
 	if((id < 0) || (is_user_alive(id) && cs_get_user_team(id) == CS_TEAM_CT))
 	{
-		if(g_TeamAlive[CS_TEAM_T] <= get_pcvar_num(gp_BoxMax))
+		if(g_TeamAlive[CS_TEAM_T] <= get_pcvar_num(gp_BoxMax) && g_TeamAlive[CS_TEAM_T] > 1)
 		{
 			for(i = 1; i <= g_MaxClients; i++)
 				if(is_user_alive(i) && cs_get_user_team(i) == CS_TEAM_T)
@@ -1155,6 +1169,9 @@ public cmd_lastrequest(id)
 public adm_freeday(id)
 {
 	static player, user[32]
+	if(!is_user_admin(id))
+		return PLUGIN_CONTINUE
+
 	read_argv(1, user, charsmax(user))
 	player = cmd_target(id, user, 2)
 	if(is_user_connected(player) && cs_get_user_team(player) == CS_TEAM_T)
@@ -1167,23 +1184,32 @@ public adm_freeday(id)
 public adm_nomic(id)
 {
 	static player, user[32]
-	read_argv(1, user, charsmax(user))
-	player = cmd_target(id, user, 3)
-	if(is_user_connected(player))
+	if(id == 0 || is_user_admin(id))
 	{
-		cmd_nomic(player)
+		read_argv(1, user, charsmax(user))
+		player = cmd_target(id, user, 3)
+		if(is_user_connected(player))
+		{
+			cmd_nomic(player)
+		}
 	}
 	return PLUGIN_HANDLED
 }
 
 public adm_open(id)
 {
+	if(!is_user_admin(id))
+		return PLUGIN_CONTINUE
+
 	jail_open()
 	return PLUGIN_HANDLED
 }
 
 public adm_box(id)
 {
+	if(!is_user_admin(id))
+		return PLUGIN_CONTINUE
+
 	cmd_box(-1)
 	return PLUGIN_HANDLED
 }
@@ -1379,19 +1405,19 @@ public hud_status(task)
 	if(g_Simon)
 	{
 		get_user_name(g_Simon, name, charsmax(name))
-		player_hudmessage(0, 2, 3.0, {0, 255, 0}, "%L", LANG_SERVER, "JBE_SIMON_FOLLOW", name)
+		player_hudmessage(0, 2, HUD_DELAY + 1.0, {0, 255, 0}, "%L", LANG_SERVER, "JBE_SIMON_FOLLOW", name)
 	}
 	else if(g_Freeday)
 	{
-		player_hudmessage(0, 2, 3.0, {0, 255, 0}, "%L", LANG_SERVER, "JBE_STATUS_FREEDAY")
+		player_hudmessage(0, 2, HUD_DELAY + 1.0, {0, 255, 0}, "%L", LANG_SERVER, "JBE_STATUS_FREEDAY")
 	}
 
 	if(g_PlayerWanted)
-		player_hudmessage(0, 3, 3.0, {255, 25, 50}, "%s", wanted)
+		player_hudmessage(0, 3, HUD_DELAY + 1.0, {255, 25, 50}, "%s", wanted)
 	else if(g_PlayerRevolt)
-		player_hudmessage(0, 3, 3.0, {255, 25, 50}, "%L", LANG_SERVER, "JBE_PRISONER_REVOLT")
+		player_hudmessage(0, 3, HUD_DELAY + 1.0, {255, 25, 50}, "%L", LANG_SERVER, "JBE_PRISONER_REVOLT")
 
-	player_hudmessage(0, 5, 3.0, {0, 255, 0}, "%L", LANG_SERVER, "JBE_STATUS_DAY", g_JailDay)
+	player_hudmessage(0, 5, HUD_DELAY + 1.0, {0, 255, 0}, "%L", LANG_SERVER, "JBE_STATUS_DAY", g_JailDay)
 }
 
 public safe_time(task)
@@ -1582,8 +1608,11 @@ public freeday_choice(id, menu, item)
 		}
 		case('2'):
 		{
-			if(!g_Simon || (id == g_Simon))
+			if((id == g_Simon) || is_user_admin(id))
 			{
+				g_Simon = 0
+				get_user_name(id, dst, charsmax(dst))
+				client_print(0, print_console, "%s gives freeday for everyone", dst)
 				server_print("JBE Client %i gives freeday for everyone", id)
 				check_freeday(TASK_FREEDAY)
 			}
