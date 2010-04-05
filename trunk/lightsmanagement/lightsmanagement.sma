@@ -109,12 +109,14 @@ public switch_use(ent, caller, activator, use_type, Float:value)
 	if(!mode || (!connected && !get_pcvar_num(gp_LightsOther)))
 		return HAM_IGNORED
 
-	team = connected ? get_user_team(caller) : -1
-	if((team == mode) || (get_pcvar_num(gp_LightsAdmin) && is_user_admin(caller)))
-		return HAM_IGNORED
-
 	if(connected)
+	{
+		team = get_user_team(caller)
+		if(team == mode || (get_pcvar_num(gp_LightsAdmin) && is_user_admin(caller)))
+			return HAM_IGNORED
+
 		client_print(caller, print_center, "%L", LANG_SERVER, "NO_ACC_COM")
+	}
 	return HAM_SUPERCEDE
 }
 
