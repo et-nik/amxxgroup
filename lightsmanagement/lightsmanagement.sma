@@ -5,13 +5,15 @@
  
 #define PLUGIN_NAME	"Lights Management"
 #define PLUGIN_AUTHOR	"JoRoPiTo"
-#define PLUGIN_VERSION	"0.1"
+#define PLUGIN_VERSION	"0.2"
 #define PLUGIN_CVAR	"lightsmgmt"
 
 enum _buttons { _ent, _class[32] }
 
 new gp_PrecacheKeyValue
 new gp_LightsMode
+new gp_LightsAdmin
+new gp_LightsOther
 
 new Trie:g_Managers
 new g_Buttons[10][_buttons]
@@ -23,7 +25,11 @@ public plugin_init()
 	register_plugin(PLUGIN_NAME, PLUGIN_VERSION, PLUGIN_AUTHOR)
 	register_cvar(PLUGIN_CVAR, PLUGIN_VERSION, FCVAR_SERVER|FCVAR_SPONLY)
  
-	gp_LightsMode = register_cvar("lightsmode", "3") // 0-everyone 1-ct 2-tt 3-nobody
+	register_dictionary("common.txt")
+
+	gp_LightsMode = register_cvar("lightsmode", "3") // 0-everyone / 1-ct / 2-tt / 3-nobody
+	gp_LightsAdmin = register_cvar("lightsadmin", "1") // 0-follow lightsmode / 1-allow admins
+	gp_LightsOther = register_cvar("lightsother", "1") // 0-allow non-player callers / 1-disallow
 	setup_buttons()
 }
 
@@ -70,7 +76,7 @@ public setup_buttons()
 			if(!pev_valid(ent[2]))
 				continue
 
-			if(pev_valid(ent[2]) && (button_exist(ent[2]) < 0))
+			if(pev_valid(ent[2]) && (find_button(ent[2]) < 0))
 			{
 				g_Buttons[pos][_ent] = ent[2]
 				pev(ent[2], pev_classname, g_Buttons[pos][_class], charsmax(g_Buttons[][_class]))
@@ -92,20 +98,27 @@ public setup_buttons()
 
 public switch_use(ent, caller, activator, use_type, Float:value)
 {
-	static mode, team
+	static mode, team, connected
+
+	if(find_button(ent) < 0)
+		return HAM_IGNORED
+
 	mode = get_pcvar_num(gp_LightsMode)
-	if(!mode || !is_user_connected(caller))
+	connected = is_user_connected(caller)
+
+	if(!mode || (!connected && !get_pcvar_num(gp_LightsOther)))
 		return HAM_IGNORED
 
-	team = get_user_team(caller)
-	if(team == mode)
+	team = connected ? get_user_team(caller) : -1
+	if((team == mode) || (get_pcvar_num(gp_LightsAdmin) && is_user_admin(caller)))
 		return HAM_IGNORED
 
-	client_print(caller, print_center, "You're not allowed to switch lights")
+	if(connected)
+		client_print(caller, print_center, "%L", LANG_SERVER, "NO_ACC_COM")
 	return HAM_SUPERCEDE
 }
 
-stock button_exist(needle)
+stock find_button(needle)
 {
 	for(new i = 0; i < sizeof g_Buttons; i++)
 	{
