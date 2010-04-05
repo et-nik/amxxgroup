@@ -13,7 +13,7 @@ enum _buttons { _ent, _class[32] }
 new gp_PrecacheKeyValue
 new gp_LightsMode
 
-new Trie:g_CellManagers
+new Trie:g_Managers
 new g_Buttons[10][_buttons]
  
 public plugin_init()
@@ -29,7 +29,7 @@ public plugin_init()
 
 public plugin_precache()
 {
- 	g_CellManagers = TrieCreate()
+ 	g_Managers = TrieCreate()
 	gp_PrecacheKeyValue = register_forward(FM_KeyValue, "precache_keyvalue", 1)
 }
 
@@ -44,7 +44,7 @@ public precache_keyvalue(ent, kvd_handle)
 		return FMRES_IGNORED
 
 	get_kvd(kvd_handle, KV_KeyName, info, charsmax(info))
-	TrieSetCell(g_CellManagers, info, ent)
+	TrieSetCell(g_Managers, info, ent)
 	return FMRES_IGNORED
 }
 
@@ -60,9 +60,9 @@ public setup_buttons()
 			continue
 
 		pev(ent[0], pev_targetname, info, charsmax(info))
-		if(TrieKeyExists(g_CellManagers, info))
+		if(TrieKeyExists(g_Managers, info))
 		{
-			TrieGetCell(g_CellManagers, info, ent[1])
+			TrieGetCell(g_Managers, info, ent[1])
 			pev(ent[1], pev_targetname, info, charsmax(info))
 		}
 		while((ent[2] = engfunc(EngFunc_FindEntityByString, ent[2], "target", info)))
@@ -79,7 +79,7 @@ public setup_buttons()
 			}
 		}
 	}
-	TrieDestroy(g_CellManagers)
+	TrieDestroy(g_Managers)
 
 	for(new i = 0; i < sizeof g_Buttons; i++)
 	{
