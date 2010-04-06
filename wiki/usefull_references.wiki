@@ -16,6 +16,8 @@
 
 [http://forums.alliedmods.net/showthread.php?t=123097 Counter-Strike SDK]
 
+[http://code.google.com/p/cs-sdk/ CS1.6 SDK (planned)]
+
 [http://forums.alliedmods.net/showthread.php?t=67752 AMX ModX Profiler]
 ==Other links==
 
