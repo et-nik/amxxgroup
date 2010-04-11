@@ -1,13 +1,18 @@
 /*
 Changelog:
 
+v1.9
+	* Finally fixed voice control
+	* Added cvar to disable team change
+	* Fixed OldStyle team menu issue
+	* Fixed crowbar user + he damage issue
+
 v1.8
 	* Fixed duel bug
 	* Fixed clcmd/concmd flags problem
 	* Added cell opener for maps with multi_manager 
 	* Added cvar to enable last request
 	* Added cvar to enable motd
-	* Finally fixed voice control
 
 v1.7
 	* Fixed auto Simon mode
@@ -54,7 +59,7 @@ v1.3
  
 #define PLUGIN_NAME	"JailBreak Extreme"
 #define PLUGIN_AUTHOR	"JoRoPiTo"
-#define PLUGIN_VERSION	"1.8"
+#define PLUGIN_VERSION	"1.9"
 #define PLUGIN_CVAR	"jbextreme"
 
 #define TASK_STATUS	2487000
@@ -108,6 +113,7 @@ new gp_Motd
 new gp_SpectRounds
 new gp_NosimonRounds
 new gp_AutoOpen
+new gp_TeamChange
 
 new g_MaxClients
 new g_MsgStatusText
@@ -116,6 +122,12 @@ new g_MsgVGUIMenu
 new g_MsgShowMenu
 new g_MsgClCorpse
 new g_MsgMOTD
+
+new gc_TalkMode
+new gc_VoiceBlock
+new gc_SimonSteps
+new gc_ButtonShoot
+new Float:gc_CrowbarMul
 
 // Precache
 new const _FistModels[][] = { "models/p_bknuckles.mdl", "models/v_bknuckles.mdl" }
@@ -283,6 +295,7 @@ public plugin_init()
 	gp_CrowbarMul = register_cvar("jbe_crowbarmultiplier", "25.0")
 	gp_CrowbarMax = register_cvar("jbe_maxcrowbar", "1")
 	gp_TeamRatio = register_cvar("jbe_teamratio", "3")
+	gp_TeamChange = register_cvar("jbe_teamchange", "0") // 0-disable team change for tt / 1-enable team change
 	gp_CtMax = register_cvar("jbe_maxct", "6")
 	gp_BoxMax = register_cvar("jbe_boxmax", "6")
 	gp_RetryTime = register_cvar("jbe_retrytime", "10.0")
@@ -294,8 +307,8 @@ public plugin_init()
 	gp_NosimonRounds = register_cvar("jbe_nosimonrounds", "7")
 	gp_SimonRandom = register_cvar("jbe_randomsimon", "0")
 	gp_AutoOpen = register_cvar("jbe_autoopen", "1")
-	gp_TalkMode = register_cvar("jbe_talkmode", "2")	// 0-alltak / 1-tt talk / 1-tt no talk
-	gp_VoiceBlock = register_cvar("jbe_blockvoice", "1")	// 0-dont block / 1-block voicerecord
+	gp_TalkMode = register_cvar("jbe_talkmode", "2")	// 0-alltak / 1-tt talk / 2-tt no talk
+	gp_VoiceBlock = register_cvar("jbe_blockvoice", "2")	// 0-dont block / 1-block voicerecord / 2-block voicerecord except simon
 	gp_ButtonShoot = register_cvar("jbe_buttonshoot", "1")	// 0-standard / 1-func_button shoots!
  
 	g_MaxClients = get_global_int(GL_maxClients)
@@ -396,7 +409,7 @@ public client_disconnect(id)
 
 public client_PostThink(id)
 {
-	if(id != g_Simon || !get_pcvar_num(gp_SimonSteps) || !is_user_alive(id) ||
+	if(id != g_Simon || !gc_SimonSteps || !is_user_alive(id) ||
 		!(entity_get_int(id, EV_INT_flags) & FL_ONGROUND) || entity_get_int(id, EV_ENT_groundentity))
 		return PLUGIN_CONTINUE
 	
@@ -449,11 +462,13 @@ public msg_statusicon(msgid, dest, id)
 public msg_vguimenu(msgid, dest, id)
 {
 	static msgarg1
+	static CsTeams:team
 
 	msgarg1 = get_msg_arg_int(1)
 	if(msgarg1 == 2)
 	{
-		if(is_user_alive(id) && (cs_get_user_team(id) == CS_TEAM_T) && !is_user_admin(id))
+		team = cs_get_user_team(id)
+		if((team == CS_TEAM_T) && !is_user_admin(id) && (is_user_alive(id) || !get_pcvar_num(gp_TeamChange)))
 		{
 			client_print(id, print_center, "%L", LANG_SERVER, "JBE_TEAM_CANTCHANGE")
 			return PLUGIN_HANDLED
@@ -468,16 +483,31 @@ public msg_vguimenu(msgid, dest, id)
 public msg_showmenu(msgid, dest, id)
 {
 	static msgarg1, roundloop
+	static CsTeams:team
 	msgarg1 = get_msg_arg_int(1)
 
-	if(msgarg1 != 531)
+	if(msgarg1 != 531 && msgarg1 != 563)
 		return PLUGIN_CONTINUE
 
 	roundloop = floatround(get_pcvar_float(gp_RetryTime) / 2)
+	team = cs_get_user_team(id)
 
-	if(is_user_alive(id) && !(g_RoundStarted >= roundloop) && (cs_get_user_team(id) == CS_TEAM_T))
+	if(team == CS_TEAM_T)
 	{
-		client_print(id, print_center, "%L", LANG_SERVER, "JBE_TEAM_CANTCHANGE")
+		if(!is_user_admin(id) && (is_user_alive(id) || (g_RoundStarted >= roundloop) || !get_pcvar_num(gp_TeamChange)))
+		{
+			client_print(id, print_center, "%L", LANG_SERVER, "JBE_TEAM_CANTCHANGE")
+			return PLUGIN_HANDLED
+		}
+		else
+		{
+			show_menu(id, 51, TEAM_MENU, -1)
+			return PLUGIN_HANDLED
+		}
+	}
+	else
+	{
+		show_menu(id, 51, TEAM_MENU, -1)
 		return PLUGIN_HANDLED
 	}
 
@@ -625,9 +655,9 @@ public player_damage(victim, ent, attacker, Float:damage, bits)
 	{
 		case(0):
 		{
-			if(get_user_weapon(attacker) == CSW_KNIFE && get_bit(g_PlayerCrowbar, attacker) && cs_get_user_team(victim) != CS_TEAM_T)
+			if(attacker == ent && get_user_weapon(attacker) == CSW_KNIFE && get_bit(g_PlayerCrowbar, attacker) && cs_get_user_team(victim) != CS_TEAM_T)
 			{
-				SetHamParamFloat(4, damage * get_pcvar_float(gp_CrowbarMul))
+				SetHamParamFloat(4, damage * gc_CrowbarMul)
 				return HAM_OVERRIDE
 			}
 		}
@@ -704,9 +734,9 @@ public player_attack(victim, attacker, Float:damage, Float:direction[3], traceha
 
 public button_attack(button, id, Float:damage, Float:direction[3], tracehandle, damagebits)
 {
-	if(is_valid_ent(button) && get_pcvar_num(gp_ButtonShoot))
+	if(is_valid_ent(button) && gc_ButtonShoot)
 	{
-		ExecuteHam(Ham_Use, button, id, 0, 2, 1.0)
+		ExecuteHamB(Ham_Use, button, id, 0, 2, 1.0)
 		entity_set_float(button, EV_FL_frame, 0.0)
 	}
 
@@ -834,7 +864,26 @@ public voice_listening(receiver, sender, bool:listen)
 		return FMRES_SUPERCEDE
 	}
 
-	if((!get_bit(g_SimonVoice, sender) && get_pcvar_num(gp_VoiceBlock)) || !is_user_alive(sender))
+	switch(gc_VoiceBlock)
+	{
+		case(2):
+		{
+			if((sender != g_Simon) && (!get_bit(g_SimonVoice, sender) && gc_VoiceBlock))
+			{
+				engfunc(EngFunc_SetClientListening, receiver, sender, false)
+				return FMRES_SUPERCEDE
+			}
+		}
+		case(1):
+		{
+			if(!get_bit(g_SimonVoice, sender) && gc_VoiceBlock)
+			{
+				engfunc(EngFunc_SetClientListening, receiver, sender, false)
+				return FMRES_SUPERCEDE
+			}
+		}
+	}
+	if(!is_user_alive(sender))
 	{
 		engfunc(EngFunc_SetClientListening, receiver, sender, false)
 		return FMRES_SUPERCEDE
@@ -856,7 +905,7 @@ public voice_listening(receiver, sender, bool:listen)
 	{
 		static CsTeams:steam
 		steam = cs_get_user_team(sender)
-		switch(get_pcvar_num(gp_TalkMode))
+		switch(gc_TalkMode)
 		{
 			case(2):
 			{
@@ -899,7 +948,7 @@ public round_first()
 public round_end()
 {
 	static CsTeams:team
-	static maxnosimon
+	static maxnosimon, spectrounds
 	g_SafeTime = 0
 	g_PlayerRevolt = 0
 	g_PlayerFreeday = 0
@@ -923,6 +972,7 @@ public round_end()
 	remove_task(TASK_FREEEND)
 	remove_task(TASK_ROUND)
 	maxnosimon = get_pcvar_num(gp_NosimonRounds)
+	spectrounds = get_pcvar_num(gp_SpectRounds)
 	for(new i = 1; i <= g_MaxClients; i++)
 	{
 		if(!is_user_connected(i))
@@ -943,7 +993,7 @@ public round_end()
 			case(CS_TEAM_SPECTATOR,CS_TEAM_UNASSIGNED):
 			{
 				g_PlayerSpect[i]++
-				if(g_PlayerSpect[i] > get_pcvar_num(gp_SpectRounds))
+				if(g_PlayerSpect[i] > spectrounds)
 				{
 					client_cmd(i, "disconnect")
 					server_print("JBE Disconnected spectator client #%i", i)
@@ -1418,6 +1468,13 @@ public hud_status(task)
 		player_hudmessage(0, 3, HUD_DELAY + 1.0, {255, 25, 50}, "%L", LANG_SERVER, "JBE_PRISONER_REVOLT")
 
 	player_hudmessage(0, 5, HUD_DELAY + 1.0, {0, 255, 0}, "%L", LANG_SERVER, "JBE_STATUS_DAY", g_JailDay)
+
+	gc_TalkMode = get_pcvar_num(gp_TalkMode)
+	gc_VoiceBlock = get_pcvar_num(gp_VoiceBlock)
+	gc_SimonSteps = get_pcvar_num(gp_SimonSteps)
+	gc_ButtonShoot = get_pcvar_num(gp_ButtonShoot)
+	gc_CrowbarMul = get_pcvar_float(gp_CrowbarMul)
+
 }
 
 public safe_time(task)
