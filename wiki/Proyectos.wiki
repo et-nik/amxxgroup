@@ -31,3 +31,6 @@ Proyects list
   * [ghostsmod Ghosts]
   * [kidsmod Kids Mod]
   * [jbextreme JailBreak Extreme] *dont* / *released*
+
+= Modules =
+  * [xpmod XP Module]
