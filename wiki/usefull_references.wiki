@@ -21,6 +21,9 @@
 [http://code.google.com/p/cs-sdk/ CS1.6 SDK (planned)]
 
 [http://forums.alliedmods.net/showthread.php?t=67752 AMX ModX Profiler]
+
+[http://forums.alliedmods.net/showthread.php?t=91474 3D Tutorial]
+
 ==Other links==
 
 [http://www.csload.com/cs_1.6_personal_file_dump Old HL1 Resource Files]
