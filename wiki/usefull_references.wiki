@@ -24,6 +24,8 @@
 
 [http://forums.alliedmods.net/showthread.php?t=91474 3D Tutorial]
 
+[https://forums.alliedmods.net/showthread.php?t=92327 CZ Style Tutor in CS]
+
 ==Other links==
 
 [http://www.csload.com/cs_1.6_personal_file_dump Old HL1 Resource Files]
