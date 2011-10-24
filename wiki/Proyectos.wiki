@@ -17,8 +17,8 @@ Proyects list
 = Utilities =
   * [svcstocks TEMPENTITY Stocks]
   * [edictshelper No Edicts Helper]
-  * [spawnduplicator Automatic Spawn Point Duplicator]
-  * [amxxaccouns AMXX User Accounts]
+  * [spawnduplicator Automatic Spawn Point Duplicator] *done* / *private*
+  * [amxxaccouns AMXX User Accounts] *done* / *private*
   * [multifastdl Multi FastDL] *done* / *released*
   * [npcaitool NPC AI Tools]
   * [dnslib DNS Library]
