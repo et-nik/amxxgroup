@@ -1,6 +1,6 @@
 = Introduction =
 
-This tool is oriented to fix some problems with you have horphans edicts created in the map.
+This tool is oriented to fix some problems when you have orphans edicts created in the map.
 
 = Details =
 
